@@ -185,9 +185,9 @@ public class MainActivity extends BaseActivity {
     private TextView btnSubmit;
     private RelativeLayout boxUserName;
     private EditText editUserName;
-    private RelativeLayout boxPassword;
     private EditText editPassword;
-    
+    private RelativeLayout boxPassword;
+
     private TextView btnClose;
     private WebView webView;
     
