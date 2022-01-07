@@ -3,6 +3,9 @@ package com.kongzue.dialogx.util.views;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -12,6 +15,7 @@ import android.view.ViewParent;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 
+import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.R;
 
 import static android.view.View.MeasureSpec.EXACTLY;
@@ -51,16 +55,18 @@ public class MaxRelativeLayout extends RelativeLayout {
     
     private void init(Context context, AttributeSet attrs) {
         if (attrs != null) {
-            TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.MaxRelativeLayout);
-            maxWidth = a.getDimensionPixelSize(R.styleable.MaxRelativeLayout_maxLayoutWidth, 0);
-            maxHeight = a.getDimensionPixelSize(R.styleable.MaxRelativeLayout_maxLayoutHeight, 0);
-            lockWidth = a.getBoolean(R.styleable.MaxRelativeLayout_lockWidth, false);
-            interceptTouch = a.getBoolean(R.styleable.MaxRelativeLayout_interceptTouch, true);
+            TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.DialogXMaxLayout);
+            maxWidth = a.getDimensionPixelSize(R.styleable.DialogXMaxLayout_maxLayoutWidth, 0);
+            maxHeight = a.getDimensionPixelSize(R.styleable.DialogXMaxLayout_maxLayoutHeight, 0);
+            minWidth = a.getDimensionPixelSize(R.styleable.DialogXMaxLayout_minLayoutWidth, 0);
+            minHeight = a.getDimensionPixelSize(R.styleable.DialogXMaxLayout_minLayoutHeight, 0);
+            lockWidth = a.getBoolean(R.styleable.DialogXMaxLayout_lockWidth, false);
+            interceptTouch = a.getBoolean(R.styleable.DialogXMaxLayout_interceptTouch, true);
             
             a.recycle();
         }
-        minWidth = getMinimumWidth();
-        minHeight = getMinimumHeight();
+        minWidth = minWidth == 0 ? getMinimumWidth() : minWidth;
+        minHeight = minHeight == 0 ? getMinimumHeight() : minHeight;
         
         if (!isInEditMode()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -104,11 +110,11 @@ public class MaxRelativeLayout extends RelativeLayout {
         if (lockWidth) {
             maxWidth = Math.min(maxWidth, Math.min(widthSize, preWidth));
         }
-        if (maxHeight > 0) {
-            heightSize = Math.min(heightSize, maxHeight);
+        if (heightSize > maxHeight && maxHeight!=0) {
+            heightSize = maxHeight;
         }
-        if (maxWidth > 0) {
-            widthSize = Math.min(widthSize, maxWidth);
+        if (widthSize > maxWidth && maxWidth!=0) {
+            widthSize = maxWidth;
         }
         View blurView = findViewWithTag("blurView");
         View contentView = findViewWithoutTag("blurView");
@@ -154,6 +160,7 @@ public class MaxRelativeLayout extends RelativeLayout {
         return null;
     }
     
+    @Deprecated
     public boolean isChildScrollViewCanScroll() {
         if (childScrollView == null) return false;
         if (!childScrollView.isEnabled()) {
@@ -182,6 +189,26 @@ public class MaxRelativeLayout extends RelativeLayout {
     }
     
     private OnYChanged onYChangedListener;
+    
+    int navBarHeight;
+    Paint navBarPaint;
+    
+    public void setNavBarHeight(int height) {
+        navBarHeight = height;
+        invalidate();
+    }
+    
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        if (navBarHeight != 0 && DialogX.bottomDialogNavbarColor != 0) {
+            if (navBarPaint == null) {
+                navBarPaint = new Paint();
+                navBarPaint.setColor(DialogX.bottomDialogNavbarColor);
+            }
+            canvas.drawRect(0, getHeight() - navBarHeight, getWidth(), getHeight(), navBarPaint);
+        }
+    }
     
     public interface OnYChanged {
         void y(float y);
@@ -214,11 +241,18 @@ public class MaxRelativeLayout extends RelativeLayout {
         onTouchListener = l;
     }
     
+    boolean reInterceptTouch;
+    
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         if (onTouchListener != null) {
-            onTouchListener.onTouch(this, ev);
+            reInterceptTouch = onTouchListener.onTouch(this, ev);
         }
         return super.dispatchTouchEvent(ev);
+    }
+    
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        return reInterceptTouch;
     }
 }

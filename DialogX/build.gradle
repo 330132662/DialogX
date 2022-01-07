@@ -1,5 +1,4 @@
 apply plugin: 'com.android.library'
-apply plugin: 'android-maven'
 
 group = "com.kongzue.dialogx"
 version = BUILD_VERSION
@@ -8,15 +7,10 @@ android {
     compileSdkVersion 30
 
     defaultConfig {
-        minSdkVersion 21
+        minSdkVersion 19
         targetSdkVersion 30
-        versionCode BUILD_VERSION_INT as int
-        versionName BUILD_VERSION
 
         consumerProguardFiles "consumer-rules.pro"
-
-        renderscriptTargetApi 21
-        renderscriptSupportModeEnabled true    // Enable RS support
     }
 
     buildTypes {
@@ -36,7 +30,8 @@ artifacts {
     archives sourcesJar
 }
 dependencies {
-    implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation 'androidx.appcompat:appcompat:1.2.0+'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.0'
+    compileOnly files('libs\\androidx-rs.jar')
     api files('libs\\DialogXInterface.jar')
 }

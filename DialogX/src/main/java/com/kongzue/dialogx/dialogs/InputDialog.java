@@ -533,9 +533,10 @@ public class InputDialog extends MessageDialog {
     }
     
     @Override
-    public void onUIModeChange(Configuration newConfig) {
+    public void restartDialog() {
         if (dialogView != null) {
             dismiss(dialogView);
+            isShow = false;
         }
         if (getDialogImpl().boxCustom!=null){
             getDialogImpl().boxCustom.removeAllViews();
@@ -565,6 +566,17 @@ public class InputDialog extends MessageDialog {
     
     public InputDialog setExitAnimResId(int exitResId) {
         customExitAnimResId = exitResId;
+        return this;
+    }
+    
+    public InputDialog setMaxWidth(int maxWidth) {
+        this.maxWidth = maxWidth;
+        refreshUI();
+        return this;
+    }
+    
+    public InputDialog setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
+        this.dialogImplMode = dialogImplMode;
         return this;
     }
 }

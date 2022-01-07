@@ -2,6 +2,7 @@ package com.kongzue.dialogx.dialogs;
 
 import android.app.Activity;
 
+import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.interfaces.DialogLifecycleCallback;
 
 import java.lang.ref.WeakReference;
@@ -14,6 +15,12 @@ import java.lang.ref.WeakReference;
  * @createTime: 2020/9/28 23:53
  */
 public class TipDialog extends WaitDialog {
+    
+    /**
+     * 参数 duration 使用此值，或小于 0 的任意整数时，
+     * TipDialog 将不自动关闭
+     */
+    public static final int NO_AUTO_DISMISS = -1;
     
     protected TipDialog() {
         super();
@@ -146,5 +153,16 @@ public class TipDialog extends WaitDialog {
             me().refreshUI();
             me().showTip(me().readyTipType);
         }
+    }
+    
+    public TipDialog setMaxWidth(int maxWidth) {
+        this.maxWidth = maxWidth;
+        refreshUI();
+        return this;
+    }
+    
+    public TipDialog setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
+        this.dialogImplMode = dialogImplMode;
+        return this;
     }
 }

@@ -35,7 +35,7 @@
 
 ### ✅DialogX的特性：
 
-- DialogX 采用全新的实现方式，**不依赖** AlertDialog、Window 或 Fragment 实现，更加轻便快捷。
+- DialogX 采用全新的实现方式，默认 View 实现方式更为轻便，亦可选 Window、DialogFragment 实现方式，自由灵活。
 - DialogX 的启动与线程无关，你可以**在任意线程**启动 DialogX 而它都将自动在 UI 线程运行。
 - DialogX 的启动**无需 context 参数**，默认提供静态方法一句代码实现对话框的启动，使用更加方便。
 - 更自由，开发者可以轻松定制对话框中任何组件的样式，包括文本样式、按钮文字样式、菜单文本样式、输入文本样式，大到标题，小到提示消息都可以根据需要随意修改。
@@ -107,7 +107,7 @@ DialogX 采用了主题分离结构，主框架仅包含 Material 设计风格�
 
 您可以先下载 Demo 进行尝试：http://beta.kongzue.com/DialogXDemo
 
-<div align=center><img src="https://github.com/kongzue/DialogX/raw/master/readme/download_demo_qrcode.png" alt="下载 DialogX Demo" width="250" height="250" /></div>
+[![下载Demo](https://github.com/kongzue/DialogX/raw/master/readme/download_demo_img.png)](http://beta.kongzue.com/DialogXDemo)
 
 # 开始使用 DialogX
 
@@ -138,10 +138,13 @@ allprojects {
 }
 ```
 
+⚠️请注意，使用 Android Studio 北极狐版本（Arctic Fox）创建的项目，需要您前往 settings.gradle 添加上述 jitpack 仓库配置。
+
 2) 在 app 的 build.gradle 文件中找到 `dependencies{}` 代码块，并在其中加入以下语句：
 
 ```
-implementation 'com.github.kongzue.DialogX:DialogX:0.0.40'
+def dialogx_version = "0.0.43.beta13"
+implementation "com.github.kongzue.DialogX:DialogX:${dialogx_version}"
 ```
 
 #### 方式二：Gradle 引入 jCenter 源
@@ -178,6 +181,18 @@ implementation(name: 'AAR文件名', ext: 'aar')
 <a href="https://github.com/kongzue/DialogX/wiki/"><img src="https://github.com/kongzue/DialogX/raw/master/readme/img_how_to_use_tip.png" alt="如何使用" width="450" height="280" /></a>
 
 具体的使用说明，请参阅 [DialogX Wiki](https://github.com/kongzue/DialogX/wiki/)
+
+### 🧩 扩展包
+
+目前 DialogX 依然仅提供最基础的对话框实现，不提供进阶的功能模块，这是为了避免是您的应用变得臃肿。
+
+但为了保证一些常用功能，例如 地址选择、日期选择以及“分享到”对话框等较为通用且常见的功能更为简单的能够使用，我们提供了扩展包以满足这些需求。
+
+扩展包中，各个模块是单独引入的，您无需担心引入不必要的功能和资源。
+
+扩展包目前尚处于初步开发阶段，要预览或提出你的建议，请访问：[DialogXSample](https://github.com/kongzue/DialogXSample)
+
+[![DialogXSample](https://github.com/kongzue/DialogXSample/raw/master/img_dialogx_sample.png)](https://github.com/kongzue/DialogXSample)
 
 ### ℹ️使用过程遇到问题？
 

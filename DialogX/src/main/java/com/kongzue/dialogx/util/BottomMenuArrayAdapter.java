@@ -1,9 +1,14 @@
 package com.kongzue.dialogx.util;
 
+import static com.kongzue.dialogx.interfaces.BaseDialog.isNull;
+import static com.kongzue.dialogx.interfaces.BaseDialog.useTextInfo;
+
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.StateListDrawable;
+import android.os.Build;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -13,6 +18,7 @@ import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
+import android.widget.Space;
 import android.widget.TextView;
 
 import com.kongzue.dialogx.DialogX;
@@ -28,13 +34,13 @@ import java.util.List;
  * @mail: myzcxhh@live.cn
  * @createTime: 2020/10/7 0:00
  */
-public class NormalMenuArrayAdapter extends BaseAdapter {
+public class BottomMenuArrayAdapter extends BaseAdapter {
     
     private BottomMenu bottomMenu;
     public List<CharSequence> objects;
     public Context context;
     
-    public NormalMenuArrayAdapter(BottomMenu bottomMenu, Context context, List<CharSequence> objects) {
+    public BottomMenuArrayAdapter(BottomMenu bottomMenu, Context context, List<CharSequence> objects) {
         this.objects = objects;
         this.context = context;
         this.bottomMenu = bottomMenu;
@@ -42,8 +48,9 @@ public class NormalMenuArrayAdapter extends BaseAdapter {
     
     class ViewHolder {
         ImageView imgDialogxMenuIcon;
-        TextView txtDialogxMenuText;
         ImageView imgDialogxMenuSelection;
+        TextView txtDialogxMenuText;
+        Space spaceDialogxRightPadding;
     }
     
     @Override
@@ -74,8 +81,7 @@ public class NormalMenuArrayAdapter extends BaseAdapter {
                 if (resourceId == 0) {
                     resourceId = R.layout.item_dialogx_material_bottom_menu_normal_text;
                 } else {
-                    if (bottomMenu.getDialogImpl().txtDialogTitle.getVisibility() == View.VISIBLE ||
-                            bottomMenu.getDialogImpl().txtDialogTip.getVisibility() == View.VISIBLE ||
+                    if (!isNull(bottomMenu.getTitle()) || !isNull(bottomMenu.getMessage()) ||
                             bottomMenu.getCustomView() != null) {
                         if (position == 0) {
                             resourceId = bottomMenu.getStyle().overrideBottomDialogRes().overrideMenuItemLayout(bottomMenu.isLightTheme(), position, getCount(), true);
@@ -86,8 +92,9 @@ public class NormalMenuArrayAdapter extends BaseAdapter {
             convertView = mInflater.inflate(resourceId, null);
             
             viewHolder.imgDialogxMenuIcon = convertView.findViewById(R.id.img_dialogx_menu_icon);
-            viewHolder.txtDialogxMenuText = convertView.findViewById(R.id.txt_dialogx_menu_text);
             viewHolder.imgDialogxMenuSelection = convertView.findViewById(R.id.img_dialogx_menu_selection);
+            viewHolder.txtDialogxMenuText = convertView.findViewById(R.id.txt_dialogx_menu_text);
+            viewHolder.spaceDialogxRightPadding = convertView.findViewById(R.id.space_dialogx_right_padding);
             
             convertView.setTag(viewHolder);
         } else {
@@ -137,18 +144,10 @@ public class NormalMenuArrayAdapter extends BaseAdapter {
             overrideSelectionBackgroundColorRes = bottomMenu.getStyle().overrideBottomDialogRes().overrideSelectionMenuBackgroundColor(bottomMenu.isLightTheme());
         }
         if (bottomMenu.getSelection() == position) {
+            //选中的背景变色
             if (overrideSelectionBackgroundColorRes != 0) {
                 convertView.setBackgroundTintList(ColorStateList.valueOf(context.getResources().getColor(overrideSelectionBackgroundColorRes)));
-                final View finalRootView = convertView;
-                convertView.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        finalRootView.setPressed(true);
-                    }
-                });
             }
-        } else {
-            convertView.setBackgroundTintList(null);
         }
         CharSequence text = objects.get(position);
         
@@ -162,14 +161,16 @@ public class NormalMenuArrayAdapter extends BaseAdapter {
         if (null != text) {
             viewHolder.txtDialogxMenuText.setText(text);
             viewHolder.txtDialogxMenuText.setTextColor(context.getResources().getColor(textColor));
-            if (DialogX.menuTextInfo != null) {
-                useTextInfo(viewHolder.txtDialogxMenuText, DialogX.menuTextInfo);
+            if (bottomMenu.getMenuTextInfo() != null) {
+                useTextInfo(viewHolder.txtDialogxMenuText, bottomMenu.getMenuTextInfo());
             }
-            if (viewHolder.imgDialogxMenuSelection != null) {
-                if (bottomMenu.getStyle().overrideBottomDialogRes() != null && bottomMenu.getStyle().overrideBottomDialogRes().selectionImageTint(bottomMenu.isLightTheme())) {
-                    viewHolder.imgDialogxMenuSelection.setImageTintList(ColorStateList.valueOf(context.getResources().getColor(textColor)));
-                } else {
-                    viewHolder.imgDialogxMenuSelection.setImageTintList(null);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                if (viewHolder.imgDialogxMenuSelection != null) {
+                    if (bottomMenu.getStyle().overrideBottomDialogRes() != null && bottomMenu.getStyle().overrideBottomDialogRes().selectionImageTint(bottomMenu.isLightTheme())) {
+                        viewHolder.imgDialogxMenuSelection.setImageTintList(ColorStateList.valueOf(context.getResources().getColor(textColor)));
+                    } else {
+                        viewHolder.imgDialogxMenuSelection.setImageTintList(null);
+                    }
                 }
             }
             
@@ -180,34 +181,29 @@ public class NormalMenuArrayAdapter extends BaseAdapter {
                 if (resId != 0) {
                     viewHolder.imgDialogxMenuIcon.setVisibility(View.VISIBLE);
                     viewHolder.imgDialogxMenuIcon.setImageResource(resId);
-                    
-                    if (autoTintIconInLightOrDarkMode) {
-                        viewHolder.imgDialogxMenuIcon.setImageTintList(ColorStateList.valueOf(context.getResources().getColor(textColor)));
+                    if (viewHolder.spaceDialogxRightPadding != null) {
+                        viewHolder.spaceDialogxRightPadding.setVisibility(View.VISIBLE);
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        if (autoTintIconInLightOrDarkMode) {
+                            viewHolder.imgDialogxMenuIcon.setImageTintList(ColorStateList.valueOf(context.getResources().getColor(textColor)));
+                        }
                     }
                 } else {
                     viewHolder.imgDialogxMenuIcon.setVisibility(View.GONE);
+                    if (viewHolder.spaceDialogxRightPadding != null) {
+                        viewHolder.spaceDialogxRightPadding.setVisibility(View.GONE);
+                    }
                 }
             } else {
                 viewHolder.imgDialogxMenuIcon.setVisibility(View.GONE);
+                if (viewHolder.spaceDialogxRightPadding != null) {
+                    viewHolder.spaceDialogxRightPadding.setVisibility(View.GONE);
+                }
             }
         }
         
         return convertView;
     }
     
-    protected void useTextInfo(TextView textView, TextInfo textInfo) {
-        if (textInfo == null) return;
-        if (textView == null) return;
-        if (textInfo.getFontSize() > 0) {
-            textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, textInfo.getFontSize());
-        }
-        if (textInfo.getFontColor() != 1) {
-            textView.setTextColor(textInfo.getFontColor());
-        }
-        if (textInfo.getGravity() != -1) {
-            textView.setGravity(textInfo.getGravity());
-        }
-        Typeface font = Typeface.create(Typeface.SANS_SERIF, textInfo.isBold() ? Typeface.BOLD : Typeface.NORMAL);
-        textView.setTypeface(font);
-    }
 }

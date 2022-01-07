@@ -3,7 +3,6 @@ package com.kongzue.dialogx.dialogs;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.RelativeLayout;
@@ -22,7 +21,7 @@ import com.kongzue.dialogx.interfaces.OnDialogButtonClickListener;
 import com.kongzue.dialogx.interfaces.OnIconChangeCallBack;
 import com.kongzue.dialogx.interfaces.OnMenuItemClickListener;
 import com.kongzue.dialogx.interfaces.OnMenuItemSelectListener;
-import com.kongzue.dialogx.util.NormalMenuArrayAdapter;
+import com.kongzue.dialogx.util.BottomMenuArrayAdapter;
 import com.kongzue.dialogx.util.TextInfo;
 import com.kongzue.dialogx.util.views.BottomDialogListView;
 
@@ -72,7 +71,7 @@ public class BottomMenu extends BottomDialog {
         }
     }
     
-    private OnIconChangeCallBack onIconChangeCallBack;
+    private OnIconChangeCallBack<BottomMenu> onIconChangeCallBack;
     private BottomDialogListView listView;
     private BaseAdapter menuListAdapter;
     private List<CharSequence> menuList;
@@ -480,7 +479,7 @@ public class BottomMenu extends BottomDialog {
             if (!isAllowInterceptTouch()) {
                 dialog.bkg.setMaxHeight((int) bottomDialogMaxHeight);
                 if (bottomDialogMaxHeight != 0) {
-                    dialogImpl.scrollView.setEnabled(false);
+                    dialogImpl.scrollView.lockScroll(true);
                 }
             }
             
@@ -534,7 +533,6 @@ public class BottomMenu extends BottomDialog {
                                     } else {
                                         selectionIndex = position;
                                         menuListAdapter.notifyDataSetInvalidated();
-                                        menuListAdapter.notifyDataSetChanged();
                                         onMenuItemSelectListener.onOneItemSelect(me, menuList.get(position), position, true);
                                     }
                                 } else {
@@ -559,7 +557,6 @@ public class BottomMenu extends BottomDialog {
                                             selectionItems.add(position);
                                         }
                                         menuListAdapter.notifyDataSetInvalidated();
-                                        menuListAdapter.notifyDataSetChanged();
                                         int[] resultArray = new int[selectionItems.size()];
                                         CharSequence[] selectTextArray = new CharSequence[selectionItems.size()];
                                         for (int i = 0; i < selectionItems.size(); i++) {
@@ -592,14 +589,36 @@ public class BottomMenu extends BottomDialog {
             dialog.boxList.addView(listView, listViewLp);
             
             refreshUI();
+            
+            //部分主题下选中项默认按下效果
+            listView.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (menuListAdapter instanceof BottomMenuArrayAdapter) {
+                        BottomMenuArrayAdapter bottomMenuArrayAdapter = ((BottomMenuArrayAdapter) menuListAdapter);
+                        
+                        View selectItemView = listView.getChildAt(getSelection());
+                        if (selectItemView != null) {
+                            selectItemView.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    selectItemView.setPressed(true);
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+            
         }
     }
     
     @Override
     public void refreshUI() {
+        if (getDialogImpl() == null) return;
         if (listView != null) {
             if (menuListAdapter == null) {
-                menuListAdapter = new NormalMenuArrayAdapter(me, getContext(), menuList);
+                menuListAdapter = new BottomMenuArrayAdapter(me, getContext(), menuList);
             }
             if (listView.getAdapter() == null) {
                 listView.setAdapter(menuListAdapter);
@@ -614,7 +633,8 @@ public class BottomMenu extends BottomDialog {
         super.refreshUI();
     }
     
-    public void preRefreshUI(){
+    public void preRefreshUI() {
+        if (getDialogImpl() == null) return;
         runOnMain(new Runnable() {
             @Override
             public void run() {
@@ -669,11 +689,11 @@ public class BottomMenu extends BottomDialog {
         return this;
     }
     
-    public OnIconChangeCallBack getOnIconChangeCallBack() {
+    public OnIconChangeCallBack<BottomMenu> getOnIconChangeCallBack() {
         return onIconChangeCallBack;
     }
     
-    public BottomMenu setOnIconChangeCallBack(OnIconChangeCallBack onIconChangeCallBack) {
+    public BottomMenu setOnIconChangeCallBack(OnIconChangeCallBack<BottomMenu> onIconChangeCallBack) {
         this.onIconChangeCallBack = onIconChangeCallBack;
         return this;
     }
@@ -1059,5 +1079,31 @@ public class BottomMenu extends BottomDialog {
     
     public SELECT_MODE getSelectMode() {
         return selectMode;
+    }
+    
+    @Override
+    protected void shutdown() {
+        dismiss();
+    }
+    
+    public BottomMenu setMaxWidth(int maxWidth) {
+        this.maxWidth = maxWidth;
+        refreshUI();
+        return this;
+    }
+    
+    public BottomMenu setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
+        this.dialogImplMode = dialogImplMode;
+        return this;
+    }
+    
+    public TextInfo getMenuTextInfo() {
+        if (menuTextInfo == null) return DialogX.menuTextInfo;
+        return menuTextInfo;
+    }
+    
+    public BottomMenu setMenuTextInfo(TextInfo menuTextInfo) {
+        this.menuTextInfo = menuTextInfo;
+        return this;
     }
 }

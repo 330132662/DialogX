@@ -10,12 +10,16 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.util.ArrayMap;
 import android.util.Log;
+import android.view.View;
+import android.view.Window;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.interfaces.BaseDialog;
+import com.kongzue.dialogx.util.DialogXFloatingWindowActivity;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -34,6 +38,7 @@ import static com.kongzue.dialogx.DialogX.error;
 public class ActivityLifecycleImpl implements Application.ActivityLifecycleCallbacks {
     
     private onActivityResumeCallBack onActivityResumeCallBack;
+    private static ActivityLifecycleImpl activityLifecycle;
     
     public ActivityLifecycleImpl(ActivityLifecycleImpl.onActivityResumeCallBack onActivityResumeCallBack) {
         this.onActivityResumeCallBack = onActivityResumeCallBack;
@@ -45,7 +50,10 @@ public class ActivityLifecycleImpl implements Application.ActivityLifecycleCallb
             error("DialogX 未初始化。\n请检查是否在启动对话框前进行初始化操作，使用以下代码进行初始化：\nDialogX.init(context);\n\n另外建议您前往查看 DialogX 的文档进行使用：https://github.com/kongzue/DialogX");
             return;
         }
-        application.registerActivityLifecycleCallbacks(new ActivityLifecycleImpl(onActivityResumeCallBack));
+        if (activityLifecycle != null) {
+            application.unregisterActivityLifecycleCallbacks(activityLifecycle);
+        }
+        application.registerActivityLifecycleCallbacks(activityLifecycle = new ActivityLifecycleImpl(onActivityResumeCallBack));
     }
     
     public static Application getApplicationContext(Context context) {
@@ -101,6 +109,20 @@ public class ActivityLifecycleImpl implements Application.ActivityLifecycleCallb
     @Override
     public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
         if (onActivityResumeCallBack != null) {
+            Window window = activity.getWindow();
+            if (window != null) {
+                /**
+                 *  若不存在SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION标记则自动添加此标记，
+                 *  此标记影响的问题主要是在BottomDialog以及FullScreenDialog弹出后，
+                 *  显示其它对话框出现的底部非安全区高度异常的情况
+                 */
+                if (DialogX.useActivityLayoutTranslationNavigationBar && ((window.getDecorView().getSystemUiVisibility() & View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION) != View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)) {
+                    window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+                }
+            }
+            if (activity instanceof DialogXFloatingWindowActivity) {
+                return;
+            }
             onActivityResumeCallBack.getActivity(activity);
         }
     }
@@ -112,12 +134,13 @@ public class ActivityLifecycleImpl implements Application.ActivityLifecycleCallb
     
     @Override
     public void onActivityResumed(@NonNull Activity activity) {
-        if (activity.isDestroyed() || activity.isFinishing()) {
+        if (activity.isDestroyed() || activity.isFinishing() || activity instanceof DialogXFloatingWindowActivity) {
             return;
         }
         if (onActivityResumeCallBack != null) {
             onActivityResumeCallBack.getActivity(activity);
         }
+        BaseDialog.onActivityResume(activity);
     }
     
     @Override

@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/background"
     android:fitsSystemWindows="true"
-    tools:context=".MainActivity">
+    tools:context=".activity.MainActivity">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -16,87 +16,76 @@
         <RelativeLayout
             android:id="@+id/box_table"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:background="#f4f5f6"
+            android:layout_height="wrap_content"
             android:clickable="true">
 
-            <RelativeLayout
+            <LinearLayout
+                android:id="@+id/box_table_child"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="50dp"
+                android:layout_centerHorizontal="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp">
 
                 <LinearLayout
-                    android:id="@+id/box_table_child"
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:layout_alignParentBottom="true"
-                    android:layout_centerHorizontal="true"
-                    android:gravity="center_vertical"
+                    android:id="@+id/btn_back"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
                     android:orientation="horizontal"
-                    android:paddingLeft="5dp"
-                    android:paddingRight="5dp">
-
-                    <LinearLayout
-                        android:id="@+id/btn_back"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:orientation="horizontal"
-                        android:paddingRight="10dp"
-                        android:visibility="gone">
-
-                        <ImageView
-                            android:layout_width="23dp"
-                            android:layout_height="match_parent"
-                            android:layout_marginLeft="3dp"
-                            android:src="@mipmap/img_back_blue" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="match_parent"
-                            android:layout_marginLeft="2dp"
-                            android:gravity="center"
-                            android:text="返回"
-                            android:textColor="#2d6cee"
-                            android:textSize="16dp" />
-
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1" />
+                    android:paddingRight="10dp"
+                    android:visibility="gone">
 
                     <ImageView
-                        android:id="@+id/btn_share"
-                        android:layout_width="45dp"
+                        android:layout_width="23dp"
                         android:layout_height="match_parent"
-                        android:paddingLeft="10dp"
-                        android:paddingRight="10dp"
-                        android:src="@mipmap/img_share"
-                        android:visibility="gone" />
+                        android:layout_marginLeft="3dp"
+                        android:src="@mipmap/img_back_blue" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:layout_marginLeft="2dp"
+                        android:gravity="center"
+                        android:text="返回"
+                        android:textColor="#2d6cee"
+                        android:textSize="16dp" />
 
                 </LinearLayout>
 
-                <ImageView
+                <View
                     android:layout_width="match_parent"
-                    android:layout_height="1px"
-                    android:layout_alignParentBottom="true"
-                    android:background="#a6a8a9" />
+                    android:layout_height="match_parent"
+                    android:layout_weight="1" />
 
-                <TextView
-                    android:id="@+id/txt_title"
-                    android:layout_width="wrap_content"
-                    android:layout_height="50dp"
-                    android:layout_alignParentBottom="true"
-                    android:layout_centerHorizontal="true"
-                    android:gravity="center"
-                    android:text="Kongzue DialogX"
-                    android:textColor="#dc000000"
-                    android:textSize="16dp"
-                    android:textStyle="bold" />
+                <ImageView
+                    android:id="@+id/btn_share"
+                    android:layout_width="45dp"
+                    android:layout_height="match_parent"
+                    android:paddingLeft="10dp"
+                    android:paddingRight="10dp"
+                    android:src="@mipmap/img_github" />
 
-            </RelativeLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/txt_title"
+                android:layout_width="wrap_content"
+                android:layout_height="50dp"
+                android:layout_centerHorizontal="true"
+                android:gravity="center"
+                android:text="Kongzue DialogX"
+                android:textColor="#dc000000"
+                android:textSize="16dp"
+                android:textStyle="bold" />
 
         </RelativeLayout>
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="1px"
+            android:background="#a6a8a9" />
 
         <ScrollView
             android:layout_width="match_parent"
@@ -110,7 +99,72 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingLeft="15dp"
-                android:paddingRight="15dp">
+                android:paddingRight="15dp"
+                android:paddingBottom="250dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="15dp"
+                    android:text="实现方式"
+                    android:textColor="#dc000000"
+                    android:textSize="14dp"
+                    android:textStyle="bold" />
+
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fadingEdge="horizontal"
+                    android:requiresFadingEdge="horizontal"
+                    android:scrollbars="none">
+
+                <RadioGroup
+                    android:id="@+id/grp_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:orientation="horizontal">
+
+                    <RadioButton
+                        android:id="@+id/rdo_mode_view"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:padding="10dp"
+                        android:text="View"
+                        android:textColor="#7b000000"
+                        android:textSize="12dp" />
+
+                    <RadioButton
+                        android:id="@+id/rdo_mode_window"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="10dp"
+                        android:text="Window"
+                        android:textColor="#7b000000"
+                        android:textSize="12dp" />
+
+                    <RadioButton
+                        android:id="@+id/rdo_mode_dialogFragment"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="10dp"
+                        android:text="DialogFragment"
+                        android:textColor="#7b000000" />
+
+                    <RadioButton
+                        android:id="@+id/rdo_mode_floatingActivity"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="10dp"
+                        android:text="FloatingActivity"
+                        android:textColor="#7b000000" />
+
+                </RadioGroup>
+
+                </HorizontalScrollView>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -121,52 +175,70 @@
                     android:textSize="14dp"
                     android:textStyle="bold" />
 
-                <RadioGroup
-                    android:id="@+id/grp_style"
+                <HorizontalScrollView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:layout_marginBottom="5dp"
-                    android:orientation="horizontal">
+                    android:fadingEdge="horizontal"
+                    android:requiresFadingEdge="horizontal"
+                    android:scrollbars="none">
 
-                    <RadioButton
-                        android:id="@+id/rdo_material"
-                        android:layout_width="wrap_content"
+                    <RadioGroup
+                        android:id="@+id/grp_style"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:checked="true"
-                        android:text="Material"
-                        android:textColor="#7b000000"
-                        android:textSize="12dp" />
+                        android:layout_marginTop="5dp"
+                        android:layout_marginBottom="5dp"
+                        android:orientation="horizontal">
 
-                    <RadioButton
-                        android:id="@+id/rdo_ios"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="iOS"
-                        android:textColor="#7b000000"
-                        android:textSize="12dp" />
+                        <RadioButton
+                            android:id="@+id/rdo_material"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingRight="10dp"
+                            android:checked="true"
+                            android:text="Material"
+                            android:textColor="#7b000000"
+                            android:textSize="12dp" />
 
-                    <RadioButton
-                        android:id="@+id/rdo_kongzue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Kongzue"
-                        android:textColor="#7b000000"
-                        android:textSize="12dp" />
+                        <RadioButton
+                            android:id="@+id/rdo_ios"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingRight="10dp"
+                            android:text="iOS"
+                            android:textColor="#7b000000"
+                            android:textSize="12dp" />
 
-                    <RadioButton
-                        android:id="@+id/rdo_miui"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="MIUI"
-                        android:textColor="#7b000000"
-                        android:textSize="12dp" />
+                        <RadioButton
+                            android:id="@+id/rdo_kongzue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingRight="10dp"
+                            android:text="Kongzue"
+                            android:textColor="#7b000000"
+                            android:textSize="12dp" />
 
-                </RadioGroup>
+                        <RadioButton
+                            android:id="@+id/rdo_miui"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingRight="10dp"
+                            android:text="MIUI"
+                            android:textColor="#7b000000"
+                            android:textSize="12dp" />
+
+                        <RadioButton
+                            android:id="@+id/rdo_material_you"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingRight="10dp"
+                            android:text="Material You"
+                            android:textColor="#7b000000"
+                            android:textSize="12dp" />
+
+                    </RadioGroup>
+
+                </HorizontalScrollView>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -527,6 +599,27 @@
 
                 </LinearLayout>
 
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btn_bottom_custom_recycleView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="5dp"
+                        android:background="@drawable/rect_button"
+                        android:paddingLeft="15dp"
+                        android:paddingTop="10dp"
+                        android:paddingRight="15dp"
+                        android:paddingBottom="10dp"
+                        android:text="底部自定义滑动布局 RecycleView"
+                        android:textColor="@color/white"
+                        android:textSize="13dp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -657,6 +750,69 @@
                         android:textSize="13dp"
                         android:textStyle="bold" />
 
+                    <TextView
+                        android:id="@+id/btn_fullScreenDialog_fragment"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="5dp"
+                        android:background="@drawable/rect_button"
+                        android:paddingLeft="15dp"
+                        android:paddingTop="10dp"
+                        android:paddingRight="15dp"
+                        android:paddingBottom="10dp"
+                        android:text="Fragment 全屏对话框"
+                        android:textColor="@color/white"
+                        android:textSize="13dp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="15dp"
+                    android:text="上下文菜单"
+                    android:textColor="#dc000000"
+                    android:textSize="14dp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btn_contextMenu"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="5dp"
+                        android:layout_marginTop="15dp"
+                        android:background="@drawable/rect_button"
+                        android:paddingLeft="15dp"
+                        android:paddingTop="10dp"
+                        android:paddingRight="15dp"
+                        android:paddingBottom="10dp"
+                        android:text="基础菜单"
+                        android:textColor="@color/white"
+                        android:textSize="13dp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btn_selectMenu"
+                        android:layout_width="160dp"
+                        android:layout_height="48dp"
+                        android:layout_margin="5dp"
+                        android:layout_marginTop="15dp"
+                        android:background="@drawable/rect_dialogx_material_poptip_bkg"
+                        android:drawableRight="@mipmap/img_drawable_down"
+                        android:gravity="center_vertical"
+                        android:paddingLeft="15dp"
+                        android:paddingRight="5dp"
+                        android:singleLine="true"
+                        android:text="选项菜单"
+                        android:textColor="@color/black"
+                        android:textSize="16dp" />
+
                 </LinearLayout>
 
                 <TextView
@@ -689,6 +845,16 @@
                         android:textStyle="bold" />
 
                 </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txt_ver"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="15dp"
+                    android:text="当前版本："
+                    android:textColor="#dc000000"
+                    android:textSize="14dp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
         </ScrollView>

@@ -5,12 +5,12 @@ android {
 
     defaultConfig {
         applicationId "com.kongzue.dialogxdemo"
-        minSdkVersion 21
+        minSdkVersion 19
         targetSdkVersion 30
         versionCode BUILD_VERSION_INT as int
         versionName BUILD_VERSION
 
-        renderscriptTargetApi 21
+        renderscriptTargetApi 19
         renderscriptSupportModeEnabled true    // Enable RS support
     }
 
@@ -40,7 +40,8 @@ dependencies {
     implementation project(path: ':DialogXKongzueStyle')
     implementation project(path: ':DialogXMIUIStyle')
 
-    implementation 'com.github.kongzue:DialogXStyle-Snackbar:1.0.6'
+    //implementation 'com.github.kongzue:DialogXStyle-Snackbar:1.0.6'
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    implementation project(path: ':DialogXMaterialYou')
 }

@@ -10,6 +10,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import com.kongzue.dialogx.R;
@@ -26,8 +27,8 @@ import static android.view.WindowManager.LayoutParams.*;
  * @createTime: 2021/4/29 16:02
  */
 public class WindowUtil {
-
-    public static void show(final Activity activity, final View dialogView, final boolean touchEnable) {
+    
+    public static void show(Activity activity, View dialogView, boolean touchEnable) {
         try {
             if (activity.getWindow().getDecorView().isAttachedToWindow()) {
                 showNow(activity, dialogView, touchEnable);
@@ -45,11 +46,13 @@ public class WindowUtil {
             }
         }
     }
-
-    private static void showNow(final Activity activity, View dialogView, boolean touchEnable) {
+    
+    private static void showNow(Activity activity, View dialogView, boolean touchEnable) {
+        FrameLayout rootLayout = new FrameLayout(activity);
+        rootLayout.addView(dialogView,new FrameLayout.LayoutParams(MATCH_PARENT,MATCH_PARENT));
         WindowManager manager = (WindowManager) activity.getSystemService(Context.WINDOW_SERVICE);
         WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
-
+        
         layoutParams.gravity = Gravity.CENTER_VERTICAL;
         layoutParams.format = PixelFormat.TRANSPARENT;
         layoutParams.type = TYPE_APPLICATION_ATTACHED_DIALOG;
@@ -77,14 +80,14 @@ public class WindowUtil {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             layoutParams.layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
-        manager.addView(dialogView, layoutParams);
+        manager.addView(rootLayout, layoutParams);
     }
-
+    
     public static void dismiss(View dialogView) {
         BaseDialog baseDialog = (BaseDialog) dialogView.getTag();
         if (baseDialog != null && baseDialog.getActivity() != null) {
             WindowManager manager = (WindowManager) baseDialog.getActivity().getSystemService(Context.WINDOW_SERVICE);
-            manager.removeViewImmediate(dialogView);
+            manager.removeViewImmediate((View) dialogView.getParent());
         }
     }
 }

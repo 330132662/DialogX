@@ -1,6 +1,8 @@
 package com.kongzue.dialogx.dialogs;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Handler;
@@ -96,7 +98,7 @@ public class WaitDialog extends BaseDialog {
         if (noInstance) instanceBuild();
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(message, TYPE.NONE);
-        showWithInstance(noInstance, activity);
+        showWithInstance(instance, activity);
         return instance;
     }
     
@@ -113,7 +115,7 @@ public class WaitDialog extends BaseDialog {
         if (noInstance) instanceBuild();
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(messageResId, TYPE.NONE);
-        showWithInstance(noInstance, activity);
+        showWithInstance(instance, activity);
         return instance;
     }
     
@@ -132,7 +134,7 @@ public class WaitDialog extends BaseDialog {
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(message, TYPE.NONE);
         instance.setProgress(progress);
-        showWithInstance(noInstance, activity);
+        showWithInstance(instance, activity);
         return instance;
     }
     
@@ -151,7 +153,7 @@ public class WaitDialog extends BaseDialog {
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(messageResId, TYPE.NONE);
         instance.setProgress(progress);
-        showWithInstance(noInstance, activity);
+        showWithInstance(instance, activity);
         return instance;
     }
     
@@ -161,7 +163,7 @@ public class WaitDialog extends BaseDialog {
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(TYPE.NONE);
         instance.setProgress(progress);
-        showWithInstance(noInstance, activity);
+        showWithInstance(instance, activity);
         return instance;
     }
     
@@ -184,21 +186,34 @@ public class WaitDialog extends BaseDialog {
         return this;
     }
     
-    private View dialogView;
+    private WeakReference<View> dialogView;
+    
+    protected View getWaitDialogView() {
+        if (dialogView == null) return null;
+        return dialogView.get();
+    }
+    
+    protected void setWaitDialogView(View v) {
+        dialogView = new WeakReference<>(v);
+    }
     
     public WaitDialog show() {
         super.beforeShow();
-        int layoutResId = R.layout.layout_dialogx_wait;
-        if (style.overrideWaitTipRes() != null && style.overrideWaitTipRes().overrideWaitLayout(isLightTheme()) != 0) {
-            layoutResId = style.overrideWaitTipRes().overrideWaitLayout(isLightTheme());
-        }
-        dialogImpl = new DialogImpl(layoutResId);
         runOnMain(new Runnable() {
             @Override
             public void run() {
-                dialogImpl.lazyCreate();
-                if (dialogView != null) dialogView.setTag(me.get());
-                show(dialogView);
+                int layoutResId = R.layout.layout_dialogx_wait;
+                if (style.overrideWaitTipRes() != null && style.overrideWaitTipRes().overrideWaitLayout(isLightTheme()) != 0) {
+                    layoutResId = style.overrideWaitTipRes().overrideWaitLayout(isLightTheme());
+                }
+                dialogImpl = new WeakReference<>(new DialogImpl(layoutResId));
+                if (getDialogImpl() != null) {
+                    getDialogImpl().lazyCreate();
+                    if (getWaitDialogView() != null) {
+                        getWaitDialogView().setTag(me.get());
+                        show(getWaitDialogView());
+                    }
+                }
             }
         });
         return this;
@@ -206,23 +221,27 @@ public class WaitDialog extends BaseDialog {
     
     public WaitDialog show(final Activity activity) {
         super.beforeShow();
-        int layoutResId = R.layout.layout_dialogx_wait;
-        if (style.overrideWaitTipRes() != null && style.overrideWaitTipRes().overrideWaitLayout(isLightTheme()) != 0) {
-            layoutResId = style.overrideWaitTipRes().overrideWaitLayout(isLightTheme());
-        }
-        dialogImpl = new DialogImpl(layoutResId);
         runOnMain(new Runnable() {
             @Override
             public void run() {
-                dialogImpl.lazyCreate();
-                if (dialogView != null) dialogView.setTag(me.get());
-                show(activity, dialogView);
+                int layoutResId = R.layout.layout_dialogx_wait;
+                if (style.overrideWaitTipRes() != null && style.overrideWaitTipRes().overrideWaitLayout(isLightTheme()) != 0) {
+                    layoutResId = style.overrideWaitTipRes().overrideWaitLayout(isLightTheme());
+                }
+                dialogImpl = new WeakReference<>(new DialogImpl(layoutResId));
+                if (getDialogImpl() != null) {
+                    getDialogImpl().lazyCreate();
+                    if (getWaitDialogView() != null) {
+                        getWaitDialogView().setTag(me.get());
+                        show(activity, getWaitDialogView());
+                    }
+                }
             }
         });
         return this;
     }
     
-    protected DialogImpl dialogImpl;
+    protected WeakReference<DialogImpl> dialogImpl;
     
     public class DialogImpl implements DialogConvertViewInterface {
         public DialogXBaseRelativeLayout boxRoot;
@@ -240,7 +259,9 @@ public class WaitDialog extends BaseDialog {
         }
         
         public void lazyCreate() {
-            dialogView = createView(layoutResId);
+            View dialogView = createView(layoutResId);
+            if (dialogView == null) return;
+            setWaitDialogView(dialogView);
             boxRoot = dialogView.findViewById(R.id.box_root);
             bkg = dialogView.findViewById(R.id.bkg);
             blurView = dialogView.findViewById(R.id.blurView);
@@ -254,7 +275,7 @@ public class WaitDialog extends BaseDialog {
             boxCustomView = dialogView.findViewById(R.id.box_customView);
             txtInfo = dialogView.findViewById(R.id.txt_info);
             init();
-            dialogImpl = this;
+            setDialogImpl(this);
             refreshView();
         }
         
@@ -273,7 +294,7 @@ public class WaitDialog extends BaseDialog {
             boxCustomView = convertView.findViewById(R.id.box_customView);
             txtInfo = convertView.findViewById(R.id.txt_info);
             init();
-            dialogImpl = this;
+            setDialogImpl(this);
             refreshView();
         }
         
@@ -316,6 +337,17 @@ public class WaitDialog extends BaseDialog {
                             enterAnim.setDuration(enterAnimDurationTemp);
                             bkg.startAnimation(enterAnim);
                             
+                            ValueAnimator bkgAlpha = ValueAnimator.ofFloat(0f, 1f);
+                            bkgAlpha.setDuration(enterAnimDurationTemp);
+                            bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                                @Override
+                                public void onAnimationUpdate(ValueAnimator animation) {
+                                    float value = (float) animation.getAnimatedValue();
+                                    boxRoot.setBkgAlpha(value);
+                                }
+                            });
+                            bkgAlpha.start();
+                            
                             boxRoot.animate()
                                     .setDuration(enterAnimDurationTemp)
                                     .alpha(1f)
@@ -330,10 +362,15 @@ public class WaitDialog extends BaseDialog {
                 @Override
                 public void onDismiss() {
                     isShow = false;
-                    dialogImpl = null;
                     getDialogLifecycleCallback().onDismiss(me());
-                    me.clear();
+                    if (dialogImpl != null) dialogImpl.clear();
+                    dialogImpl = null;
+                    if (dialogView != null) dialogView.clear();
+                    dialogView = null;
+                    dialogLifecycleCallback = null;
+                    if (me != null) me.clear();
                     me = null;
+                    System.gc();
                 }
             });
             
@@ -360,6 +397,17 @@ public class WaitDialog extends BaseDialog {
                     return false;
                 }
             });
+            
+            if (isCancelable()) {
+                boxRoot.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        doDismiss(v);
+                    }
+                });
+            } else {
+                boxRoot.setOnClickListener(null);
+            }
         }
         
         private float oldProgress;
@@ -367,6 +415,9 @@ public class WaitDialog extends BaseDialog {
         public void refreshView() {
             if (bkg == null) return;
             if (getContext() == null) return;
+            
+            bkg.setMaxWidth(getMaxWidth());
+            
             if (style.overrideWaitTipRes() != null) {
                 int overrideBackgroundColorRes = style.overrideWaitTipRes().overrideBackgroundColorRes(isLightTheme());
                 if (overrideBackgroundColorRes == 0) {
@@ -420,43 +471,65 @@ public class WaitDialog extends BaseDialog {
         public void doDismiss(final View v) {
             if (boxRoot == null) return;
             if (getContext() == null) return;
-            boxRoot.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (v != null) v.setEnabled(false);
-                    
-                    int exitAnimResId = R.anim.anim_dialogx_default_exit;
-                    if (overrideExitAnimRes != 0) {
-                        exitAnimResId = overrideExitAnimRes;
-                    }
-                    if (customExitAnimResId != 0) {
-                        exitAnimResId = customExitAnimResId;
-                    }
-                    Animation exitAnim = AnimationUtils.loadAnimation(getContext(), exitAnimResId);
-                    long exitAnimDurationTemp = exitAnim.getDuration();
-                    if (overrideExitDuration >= 0) {
-                        exitAnimDurationTemp = overrideExitDuration;
-                    }
-                    if (exitAnimDuration != -1) {
-                        exitAnimDurationTemp = exitAnimDuration;
-                    }
-                    exitAnim.setDuration(exitAnimDurationTemp);
-                    exitAnim.setInterpolator(new AccelerateInterpolator());
-                    bkg.startAnimation(exitAnim);
-                    
-                    boxRoot.animate()
-                            .alpha(0f)
-                            .setInterpolator(new AccelerateInterpolator())
-                            .setDuration(exitAnimDurationTemp);
-                    
-                    new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            dismiss(dialogView);
+            
+            if (!dismissAnimFlag) {
+                dismissAnimFlag = true;
+                boxRoot.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Context context = getContext();
+                        if (context == null) context = boxRoot.getContext();
+                        if (context == null) return;
+                        
+                        if (v != null) v.setEnabled(false);
+                        
+                        int exitAnimResId = R.anim.anim_dialogx_default_exit;
+                        if (overrideExitAnimRes != 0) {
+                            exitAnimResId = overrideExitAnimRes;
                         }
-                    }, exitAnimDurationTemp);
-                }
-            });
+                        if (customExitAnimResId != 0) {
+                            exitAnimResId = customExitAnimResId;
+                        }
+                        Animation exitAnim = AnimationUtils.loadAnimation(context, exitAnimResId);
+                        long exitAnimDurationTemp = exitAnim.getDuration();
+                        if (overrideExitDuration >= 0) {
+                            exitAnimDurationTemp = overrideExitDuration;
+                        }
+                        if (exitAnimDuration != -1) {
+                            exitAnimDurationTemp = exitAnimDuration;
+                        }
+                        exitAnim.setDuration(exitAnimDurationTemp);
+                        exitAnim.setInterpolator(new AccelerateInterpolator());
+                        bkg.startAnimation(exitAnim);
+                        
+                        boxRoot.animate()
+                                .alpha(0f)
+                                .setInterpolator(new AccelerateInterpolator())
+                                .setDuration(exitAnimDurationTemp);
+                        
+                        ValueAnimator bkgAlpha = ValueAnimator.ofFloat(1f, 0f);
+                        bkgAlpha.setDuration(exitAnimDurationTemp);
+                        bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                            @Override
+                            public void onAnimationUpdate(ValueAnimator animation) {
+                                if (boxRoot != null) {
+                                    float value = (float) animation.getAnimatedValue();
+                                    boxRoot.setBkgAlpha(value);
+                                    if (value == 0) boxRoot.setVisibility(View.GONE);
+                                }
+                            }
+                        });
+                        bkgAlpha.start();
+                        
+                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                dismiss(getWaitDialogView());
+                            }
+                        }, exitAnimDurationTemp);
+                    }
+                });
+            }
         }
         
         public void showTip(final TYPE tip) {
@@ -486,19 +559,25 @@ public class WaitDialog extends BaseDialog {
                         public void run() {
                             getDialogLifecycleCallback().onShow(WaitDialog.this);
                             refreshView();
-                            ((View) progressView).postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (showType > -1) {
-                                        doDismiss(null);
+                            if (tipShowDuration > 0) {
+                                ((View) progressView).postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (showType > -1) {
+                                            doDismiss(null);
+                                        }
                                     }
-                                }
-                            }, tipShowDuration);
+                                }, tipShowDuration);
+                            }
                         }
                     });
                 }
             });
         }
+    }
+    
+    private void setDialogImpl(DialogImpl d) {
+        dialogImpl = new WeakReference<>(d);
     }
     
     @Override
@@ -516,21 +595,33 @@ public class WaitDialog extends BaseDialog {
     }
     
     public void refreshUI() {
+        if (getDialogImpl() == null) return;
         runOnMain(new Runnable() {
             @Override
             public void run() {
-                if (dialogImpl != null) dialogImpl.refreshView();
+                if (getDialogImpl() != null) getDialogImpl().refreshView();
             }
         });
     }
     
     public void doDismiss() {
-        if (dialogImpl == null) return;
-        dialogImpl.doDismiss(null);
+        runOnMain(new Runnable() {
+            @Override
+            public void run() {
+                if (getDialogImpl() != null) {
+                    getDialogImpl().doDismiss(null);
+                }
+            }
+        });
     }
     
     public static void dismiss() {
         me().doDismiss();
+    }
+    
+    public static void dismiss(Activity activity) {
+        WaitDialog instance = getInstance(activity);
+        if (instance != null) instance.doDismiss();
     }
     
     protected static WaitDialog me() {
@@ -639,7 +730,7 @@ public class WaitDialog extends BaseDialog {
         if (overrideCancelable != null) {
             return overrideCancelable == BOOLEAN.TRUE;
         }
-        return cancelable;
+        return false;
     }
     
     public WaitDialog setCancelable(boolean cancelable) {
@@ -676,7 +767,8 @@ public class WaitDialog extends BaseDialog {
     }
     
     public DialogImpl getDialogImpl() {
-        return dialogImpl;
+        if (dialogImpl == null) return null;
+        return dialogImpl.get();
     }
     
     public WaitDialog setCustomView(OnBindView<WaitDialog> onBindView) {
@@ -743,7 +835,7 @@ public class WaitDialog extends BaseDialog {
     }
     
     @Override
-    public void onUIModeChange(Configuration newConfig) {
+    public void restartDialog() {
         refreshUI();
     }
     
@@ -787,14 +879,14 @@ public class WaitDialog extends BaseDialog {
         if (getContext() != null && getContext() instanceof Activity && getInstance((Activity) getContext()) != null) {
             return false;
         }
-        return me == null || me.get() == null || me.get().dialogImpl == null || (me.get().getActivity() != null && me.get().getActivity() != getContext());
+        return me == null || me.get() == null || me.get().getActivity() == null || me.get().getActivity() != getContext();
     }
     
     protected static boolean noInstance(Activity activity) {
         if (getContext() != null && getInstance(activity) != null) {
             return false;
         }
-        return me == null || me.get() == null || me.get().dialogImpl == null || (me.get().getActivity() != null && me.get().getActivity() != activity);
+        return me == null || me.get() == null || me.get().getActivity() == null || me.get().getActivity() != activity;
     }
     
     public static WaitDialog getInstanceNotNull(Activity activity) {
@@ -827,11 +919,27 @@ public class WaitDialog extends BaseDialog {
         }
     }
     
-    protected static void showWithInstance(boolean noInstance, Activity activity) {
-        if (noInstance) {
-            getInstanceNotNull(activity).show(activity);
+    protected static void showWithInstance(WaitDialog instance, Activity activity) {
+        if (activity == null) {
+            instance.show();
         } else {
-            getInstanceNotNull(activity).refreshUI();
+            instance.show(activity);
         }
+    }
+    
+    @Override
+    protected void shutdown() {
+        dismiss();
+    }
+    
+    public WaitDialog setMaxWidth(int maxWidth) {
+        this.maxWidth = maxWidth;
+        refreshUI();
+        return this;
+    }
+    
+    public WaitDialog setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
+        this.dialogImplMode = dialogImplMode;
+        return this;
     }
 }

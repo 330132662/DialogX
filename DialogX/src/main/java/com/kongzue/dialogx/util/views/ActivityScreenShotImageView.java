@@ -1,12 +1,17 @@
 package com.kongzue.dialogx.util.views;
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.Display;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
@@ -64,6 +69,9 @@ public class ActivityScreenShotImageView extends AppCompatImageView {
     @Override
     protected void onDraw(Canvas canvas) {
         if (width >= mRadius && height > mRadius) {
+            if (isScreenshotSuccess) {
+                canvas.drawColor(Color.BLACK);
+            }
             Path path = new Path();
             path.moveTo(mRadius, 0);
             path.lineTo(width - mRadius, 0);
@@ -78,16 +86,17 @@ public class ActivityScreenShotImageView extends AppCompatImageView {
             canvas.clipPath(path);
         }
         try {
+            canvas.drawColor(Color.WHITE);
             super.onDraw(canvas);
         } catch (Exception e) {
         }
     }
     
+    
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        
-        refreshImage();
+        if (isAttachedToWindow() && !isScreenshotSuccess) refreshImage();
     }
     
     private int screenWidth, screenHeight;
@@ -102,23 +111,29 @@ public class ActivityScreenShotImageView extends AppCompatImageView {
     
     private void doScreenshotActivityAndZoom() {
         if (BaseDialog.getRootFrameLayout() == null) return;
-        final View view = BaseDialog.getRootFrameLayout().getChildAt(0);
+        final View view = BaseDialog.getRootFrameLayout();
         //先执行一次绘制，防止出现闪屏问题
-        drawViewImage(view);
+        if (!inited) drawViewImage(view);
         view.post(new Runnable() {
             @Override
             public void run() {
                 //当view渲染完成后再次通知刷新一下界面（当旋转屏幕执行时，很可能出现渲染延迟的问题）
                 drawViewImage(view);
+                inited = true;
             }
         });
     }
     
+    private boolean inited = false;
+    private boolean isScreenshotSuccess;
+    
     private void drawViewImage(View view) {
-        view.destroyDrawingCache();
-        view.setDrawingCacheEnabled(true);
         view.buildDrawingCache();
-        Bitmap bmp = view.getDrawingCache();
-        setImageBitmap(bmp);
+        Rect rect = new Rect();
+        view.getWindowVisibleDisplayFrame(rect);
+        view.setDrawingCacheEnabled(true);
+        setImageBitmap(Bitmap.createBitmap(view.getDrawingCache(), 0, 0, view.getWidth(), view.getHeight()));
+        view.destroyDrawingCache();
+        isScreenshotSuccess = true;
     }
 }

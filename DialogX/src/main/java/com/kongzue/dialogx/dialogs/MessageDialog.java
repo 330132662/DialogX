@@ -1,8 +1,7 @@
 package com.kongzue.dialogx.dialogs;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.content.Context;
-import android.content.res.Configuration;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputFilter;
@@ -14,7 +13,6 @@ import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -26,7 +24,6 @@ import androidx.annotation.ColorRes;
 
 import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.R;
-import com.kongzue.dialogx.impl.AnimatorListenerEndCallBack;
 import com.kongzue.dialogx.interfaces.BaseDialog;
 import com.kongzue.dialogx.interfaces.BaseOnDialogClickCallback;
 import com.kongzue.dialogx.interfaces.DialogConvertViewInterface;
@@ -230,6 +227,7 @@ public class MessageDialog extends BaseDialog {
     }
     
     public void refreshUI() {
+        if (getDialogImpl() == null) return;
         runOnMain(new Runnable() {
             @Override
             public void run() {
@@ -290,12 +288,12 @@ public class MessageDialog extends BaseDialog {
             
             txtDialogTip.setMovementMethod(LinkMovementMethod.getInstance());
             
+            boxRoot.setBkgAlpha(0f);
             boxRoot.setParentDialog(me);
             boxRoot.setOnLifecycleCallBack(new DialogXBaseRelativeLayout.OnLifecycleCallBack() {
                 @Override
                 public void onShow() {
                     isShow = true;
-                    boxRoot.setAlpha(0f);
                     int enterAnimResId = style.enterAnimResId() == 0 ? R.anim.anim_dialogx_default_enter : style.enterAnimResId();
                     if (overrideEnterAnimRes != 0) {
                         enterAnimResId = overrideEnterAnimRes;
@@ -315,11 +313,16 @@ public class MessageDialog extends BaseDialog {
                     enterAnim.setInterpolator(new DecelerateInterpolator());
                     bkg.startAnimation(enterAnim);
                     
-                    boxRoot.animate()
-                            .setDuration(enterAnimDurationTemp)
-                            .alpha(1f)
-                            .setInterpolator(new DecelerateInterpolator())
-                            .setListener(null);
+                    ValueAnimator bkgAlpha = ValueAnimator.ofFloat(0f, 1f);
+                    bkgAlpha.setDuration(enterAnimDurationTemp);
+                    bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                        @Override
+                        public void onAnimationUpdate(ValueAnimator animation) {
+                            float value = (float) animation.getAnimatedValue();
+                            boxRoot.setBkgAlpha(value);
+                        }
+                    });
+                    bkgAlpha.start();
                     
                     getDialogLifecycleCallback().onShow(me);
                     
@@ -346,7 +349,7 @@ public class MessageDialog extends BaseDialog {
                                 if (txtInput == null) return;
                                 txtInput.requestFocus();
                                 txtInput.setFocusableInTouchMode(true);
-                                imeShow(txtInput,true);
+                                imeShow(txtInput, true);
                                 txtInput.setSelection(txtInput.getText().length());
                                 if (inputInfo != null && inputInfo.isSelectAllText()) {
                                     txtInput.selectAll();
@@ -366,6 +369,9 @@ public class MessageDialog extends BaseDialog {
                 public void onDismiss() {
                     isShow = false;
                     getDialogLifecycleCallback().onDismiss(me);
+                    dialogView = null;
+                    dialogLifecycleCallback = null;
+                    System.gc();
                 }
             });
             
@@ -386,7 +392,7 @@ public class MessageDialog extends BaseDialog {
                 @Override
                 public void onClick(View v) {
                     if (txtInput != null) {
-                        imeShow(txtInput,false);
+                        imeShow(txtInput, false);
                     }
                     if (okButtonClickListener != null) {
                         if (okButtonClickListener instanceof OnInputDialogButtonClickListener) {
@@ -408,7 +414,7 @@ public class MessageDialog extends BaseDialog {
                 @Override
                 public void onClick(View v) {
                     if (txtInput != null) {
-                        imeShow(txtInput,false);
+                        imeShow(txtInput, false);
                     }
                     if (cancelButtonClickListener != null) {
                         if (cancelButtonClickListener instanceof OnInputDialogButtonClickListener) {
@@ -430,7 +436,7 @@ public class MessageDialog extends BaseDialog {
                 @Override
                 public void onClick(View v) {
                     if (txtInput != null) {
-                        imeShow(txtInput,false);
+                        imeShow(txtInput, false);
                     }
                     if (otherButtonClickListener != null) {
                         if (otherButtonClickListener instanceof OnInputDialogButtonClickListener) {
@@ -461,9 +467,10 @@ public class MessageDialog extends BaseDialog {
                 }
             }
             
-            bkg.setMaxWidth(DialogX.dialogMaxWidth);
+            bkg.setMaxWidth(getMaxWidth());
             if (me instanceof InputDialog) {
                 txtInput.setVisibility(View.VISIBLE);
+                boxRoot.bindFocusView(txtInput);
             } else {
                 txtInput.setVisibility(View.GONE);
             }
@@ -491,6 +498,7 @@ public class MessageDialog extends BaseDialog {
             useTextInfo(btnSelectPositive, okTextInfo);
             useTextInfo(btnSelectNegative, cancelTextInfo);
             useTextInfo(btnSelectOther, otherTextInfo);
+            
             if (inputInfo != null) {
                 if (inputInfo.getMAX_LENGTH() != -1)
                     txtInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(inputInfo.getMAX_LENGTH())});
@@ -650,36 +658,48 @@ public class MessageDialog extends BaseDialog {
             if (v != null) v.setEnabled(false);
             if (getContext() == null) return;
             
-            int exitAnimResId = style.exitAnimResId() == 0 ? R.anim.anim_dialogx_default_exit : style.exitAnimResId();
-            if (overrideExitAnimRes != 0) {
-                exitAnimResId = overrideExitAnimRes;
-            }
-            if (customExitAnimResId != 0) {
-                exitAnimResId = customExitAnimResId;
-            }
-            Animation exitAnim = AnimationUtils.loadAnimation(getContext(), exitAnimResId);
-            long exitAnimDurationTemp = exitAnim.getDuration();
-            exitAnim.setInterpolator(new AccelerateInterpolator());
-            if (overrideExitDuration >= 0) {
-                exitAnimDurationTemp = overrideExitDuration;
-            }
-            if (exitAnimDuration >= 0) {
-                exitAnimDurationTemp = exitAnimDuration;
-            }
-            exitAnim.setDuration(exitAnimDurationTemp);
-            bkg.startAnimation(exitAnim);
-            
-            boxRoot.animate()
-                    .alpha(0f)
-                    .setInterpolator(new AccelerateInterpolator())
-                    .setDuration(exitAnimDuration == -1 ? exitAnim.getDuration() : exitAnimDuration);
-            
-            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    dismiss(dialogView);
+            if (!dismissAnimFlag) {
+                dismissAnimFlag = true;
+                int exitAnimResId = style.exitAnimResId() == 0 ? R.anim.anim_dialogx_default_exit : style.exitAnimResId();
+                if (overrideExitAnimRes != 0) {
+                    exitAnimResId = overrideExitAnimRes;
                 }
-            }, exitAnimDuration == -1 ? exitAnim.getDuration() : exitAnimDuration);
+                if (customExitAnimResId != 0) {
+                    exitAnimResId = customExitAnimResId;
+                }
+                Animation exitAnim = AnimationUtils.loadAnimation(getContext(), exitAnimResId);
+                long exitAnimDurationTemp = exitAnim.getDuration();
+                exitAnim.setInterpolator(new AccelerateInterpolator());
+                if (overrideExitDuration >= 0) {
+                    exitAnimDurationTemp = overrideExitDuration;
+                }
+                if (exitAnimDuration >= 0) {
+                    exitAnimDurationTemp = exitAnimDuration;
+                }
+                exitAnim.setDuration(exitAnimDurationTemp);
+                bkg.startAnimation(exitAnim);
+                
+                ValueAnimator bkgAlpha = ValueAnimator.ofFloat(1f, 0f);
+                bkgAlpha.setDuration(exitAnimDurationTemp);
+                bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                    @Override
+                    public void onAnimationUpdate(ValueAnimator animation) {
+                        if (boxRoot != null) {
+                            float value = (float) animation.getAnimatedValue();
+                            boxRoot.setBkgAlpha(value);
+                            if (value == 0) boxRoot.setVisibility(View.GONE);
+                        }
+                    }
+                });
+                bkgAlpha.start();
+                
+                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        dismiss(dialogView);
+                    }
+                }, exitAnimDurationTemp);
+            }
         }
     }
     
@@ -1033,9 +1053,10 @@ public class MessageDialog extends BaseDialog {
     }
     
     @Override
-    public void onUIModeChange(Configuration newConfig) {
+    public void restartDialog() {
         if (dialogView != null) {
             dismiss(dialogView);
+            isShow = false;
         }
         if (getDialogImpl().boxCustom != null) {
             getDialogImpl().boxCustom.removeAllViews();
@@ -1069,6 +1090,22 @@ public class MessageDialog extends BaseDialog {
     
     public MessageDialog setExitAnimResId(int exitResId) {
         customExitAnimResId = exitResId;
+        return this;
+    }
+    
+    @Override
+    protected void shutdown() {
+        dismiss();
+    }
+    
+    public MessageDialog setMaxWidth(int maxWidth) {
+        this.maxWidth = maxWidth;
+        refreshUI();
+        return this;
+    }
+    
+    public MessageDialog setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
+        this.dialogImplMode = dialogImplMode;
         return this;
     }
 }
