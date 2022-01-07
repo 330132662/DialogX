@@ -28,7 +28,7 @@ import static android.view.WindowManager.LayoutParams.*;
  */
 public class WindowUtil {
     
-    public static void show(Activity activity, View dialogView, boolean touchEnable) {
+    public static void show(final Activity activity, final View dialogView, final boolean touchEnable) {
         try {
             if (activity.getWindow().getDecorView().isAttachedToWindow()) {
                 showNow(activity, dialogView, touchEnable);
@@ -47,7 +47,7 @@ public class WindowUtil {
         }
     }
     
-    private static void showNow(Activity activity, View dialogView, boolean touchEnable) {
+    private static void showNow(final Activity activity, View dialogView, boolean touchEnable) {
         FrameLayout rootLayout = new FrameLayout(activity);
         rootLayout.addView(dialogView,new FrameLayout.LayoutParams(MATCH_PARENT,MATCH_PARENT));
         WindowManager manager = (WindowManager) activity.getSystemService(Context.WINDOW_SERVICE);

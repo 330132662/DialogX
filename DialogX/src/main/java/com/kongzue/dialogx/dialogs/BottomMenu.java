@@ -597,7 +597,7 @@ public class BottomMenu extends BottomDialog {
                     if (menuListAdapter instanceof BottomMenuArrayAdapter) {
                         BottomMenuArrayAdapter bottomMenuArrayAdapter = ((BottomMenuArrayAdapter) menuListAdapter);
                         
-                        View selectItemView = listView.getChildAt(getSelection());
+                        final View selectItemView = listView.getChildAt(getSelection());
                         if (selectItemView != null) {
                             selectItemView.post(new Runnable() {
                                 @Override

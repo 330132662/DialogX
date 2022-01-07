@@ -110,7 +110,7 @@ public abstract class OnBindView<D> {
         return this;
     }
 
-    public OnBindView<D> bindParent(ViewGroup parentView, BaseDialog dialog) {
+    public OnBindView<D> bindParent(ViewGroup parentView, final BaseDialog dialog) {
         if (getCustomView() == null) return this;
         if (getCustomView().getParent() != null) {
             if (getCustomView().getParent() == parentView) {

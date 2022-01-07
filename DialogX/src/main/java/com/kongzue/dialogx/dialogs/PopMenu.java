@@ -289,7 +289,7 @@ public class PopMenu extends BaseDialog {
                     long enterAnimDurationTemp = enterAnimDuration != -1 ? enterAnimDuration : (overrideEnterDuration == -1 ? 150 : overrideEnterDuration);
                     
                     if (baseView != null) {
-                        int targetHeight = getBodyRealHeight();
+                        final int targetHeight = getBodyRealHeight();
                         boxBody.getLayoutParams().height = 1;
                         
                         if (overlayBaseView && !listMenu.isCanScroll()) {
