@@ -22,10 +22,10 @@ import androidx.appcompat.app.AppCompatActivity;
  * @createTime: 2020/10/8 17:00
  */
 public abstract class OnBindView<D> {
-    
+
     int layoutResId;
     View customView;
-    
+
     public OnBindView(int layoutResId) {
         if (BaseDialog.getContext() == null) {
             DialogX.error(ERROR_INIT_TIPS);
@@ -34,14 +34,14 @@ public abstract class OnBindView<D> {
         this.layoutResId = layoutResId;
         customView = LayoutInflater.from(BaseDialog.getContext()).inflate(layoutResId, new RelativeLayout(BaseDialog.getContext()), false);
     }
-    
+
     public OnBindView(View customView) {
         this.customView = customView;
     }
-    
+
     private androidx.fragment.app.Fragment fragment;
     private android.app.Fragment supportFragment;
-    
+
     public OnBindView(androidx.fragment.app.Fragment fragment) {
         if (BaseDialog.getContext() == null) return;
         this.customView = new FrameLayout(BaseDialog.getContext());
@@ -49,7 +49,7 @@ public abstract class OnBindView<D> {
         this.fragment = fragment;
         this.supportFragment = null;
     }
-    
+
     public OnBindView(android.app.Fragment supportFragment) {
         if (BaseDialog.getContext() == null) return;
         this.customView = new FrameLayout(BaseDialog.getContext());
@@ -57,24 +57,24 @@ public abstract class OnBindView<D> {
         this.supportFragment = supportFragment;
         this.fragment = null;
     }
-    
+
     public abstract void onBind(D dialog, View v);
-    
+
     public void onFragmentBind(D dialog, View frameLayout, androidx.fragment.app.Fragment fragment, androidx.fragment.app.FragmentManager fragmentManager) {
     }
-    
+
     public void onFragmentBind(D dialog, View frameLayout, android.app.Fragment fragment, android.app.FragmentManager fragmentManager) {
     }
-    
+
     public int getLayoutResId() {
         return layoutResId;
     }
-    
+
     public OnBindView<D> setLayoutResId(int layoutResId) {
         this.layoutResId = layoutResId;
         return this;
     }
-    
+
     public View getCustomView() {
         if (customView == null) {
             customView = LayoutInflater.from(BaseDialog.getContext()).inflate(layoutResId, new RelativeLayout(BaseDialog.getContext()), false);
@@ -82,17 +82,17 @@ public abstract class OnBindView<D> {
         }
         return customView;
     }
-    
+
     public OnBindView<D> setCustomView(View customView) {
         this.customView = customView;
         return this;
     }
-    
+
     public void clean() {
         layoutResId = 0;
         customView = null;
     }
-    
+
     @Deprecated
     public OnBindView<D> bindParent(ViewGroup parentView) {
         if (getCustomView() == null) return this;
@@ -109,7 +109,7 @@ public abstract class OnBindView<D> {
         parentView.addView(getCustomView(), lp);
         return this;
     }
-    
+
     public OnBindView<D> bindParent(ViewGroup parentView, BaseDialog dialog) {
         if (getCustomView() == null) return this;
         if (getCustomView().getParent() != null) {
