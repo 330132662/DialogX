@@ -1,6 +1,7 @@
 package com.kongzue.dialogx;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.util.Log;
 
@@ -8,6 +9,7 @@ import com.kongzue.dialogx.interfaces.BaseDialog;
 import com.kongzue.dialogx.interfaces.DialogLifecycleCallback;
 import com.kongzue.dialogx.interfaces.DialogXStyle;
 import com.kongzue.dialogx.style.MaterialStyle;
+import com.kongzue.dialogx.util.DialogListBuilder;
 import com.kongzue.dialogx.util.InputInfo;
 import com.kongzue.dialogx.util.TextInfo;
 
@@ -40,11 +42,23 @@ public class DialogX {
     //对话框最大宽度（像素）
     public static int dialogMaxWidth;
     
+    //对话框最大高度（像素）
+    public static int dialogMaxHeight;
+    
+    //对话框最小宽度（像素）
+    public static int dialogMinWidth;
+    
+    //对话框最小高度（像素）
+    public static int dialogMinHeight;
+    
     //是否允许 InputDialog 自动弹出键盘
     public static boolean autoShowInputKeyboard = true;
     
     //同时只显示一个 PopTip
     public static boolean onlyOnePopTip = false;
+    
+    //同时只显示一个 PopNotification
+    public static boolean onlyOnePopNotification = true;
     
     //默认按钮文字样式
     public static TextInfo buttonTextInfo;
@@ -112,7 +126,7 @@ public class DialogX {
     
     /**
      * 声明：若 Activity 已使用沉浸式适配请开启（已废弃）
-     *
+     * <p>
      * 请注意，若你没有使用沉浸式适配，请关闭此选项，此选项将影响对话框布局是否允许延伸至导航栏背后显示
      */
     @Deprecated
@@ -123,6 +137,19 @@ public class DialogX {
      * 彩蛋：a_man 私人定制款属性
      */
     public static int bottomDialogNavbarColor = Color.TRANSPARENT;
+    
+    //触摸滑动触发阈值，影响 BottomDialog、FullScreenDialog 下滑关闭触发距离，单位：像素
+    public static int touchSlideTriggerThreshold = dip2px(35);
+    
+    //Window 模式使用全局悬浮窗，需要 SYSTEM_ALERT_WINDOW 权限
+    public static boolean globalHoverWindow = false;
+    
+    //部分插屏广告 SDK 可能出现背景黑屏的问题，在这里配置需要 DialogX 屏蔽的 Activity 的包名以屏蔽对该 activity 的支持：
+    public static String[] unsupportedActivitiesPackageNames = new String[]{
+            "com.bytedance.sdk.openadsdk.stub.activity",
+            "com.mobile.auth.gatewayauth",
+            "com.google.android.gms.ads"
+    };
     
     public enum THEME {
         LIGHT, DARK, AUTO
@@ -142,5 +169,14 @@ public class DialogX {
     
     public static void error(Object o) {
         if (DEBUGMODE) Log.e(">>>", o.toString());
+    }
+    
+    private static int dip2px(float dpValue) {
+        final float scale = Resources.getSystem().getDisplayMetrics().density;
+        return (int) (dpValue * scale + 0.5f);
+    }
+    
+    public static DialogListBuilder showDialogList(BaseDialog... dialogs) {
+        return DialogListBuilder.create(dialogs).show();
     }
 }

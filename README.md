@@ -1,17 +1,17 @@
+🌐 View [English Document](https://github.com/kongzue/DialogX/blob/master/README_EN.md) | [繁體中文文檔](https://github.com/kongzue/DialogX/blob/master/README_TC.md)
+
 <div align=center>    
     <img src="https://github.com/kongzue/DialogX/raw/master/readme/img_logo_dialogx.jpg" width="150">    
     <center><h1>Kongzue DialogX</h1></center> 
 </div>
-
-
 
 经过三代的更迭，全新的 Kongzue DialogX 已经到来，不仅仅保留了以往的优势，更带来了更灵活的扩展性和全新的流畅体验。
 
 <a href="https://github.com/kongzue/dialogX/">
 <img src="https://img.shields.io/badge/Kongzue%20DialogX-Release-green.svg" alt="Kongzue Dialog">
 </a> 
-<a href="https://bintray.com/myzchh/maven/dialogX/">
-<img src="https://img.shields.io/badge/jCenter-Beta-blue.svg" alt="Maven">
+<a href="https://github.com/kongzue/DialogX/releases">
+<img src="https://img.shields.io/github/v/release/kongzue/DialogX?color=green" alt="Maven">
 </a> 
 <a href="https://jitpack.io/#kongzue/DialogX">
 <img src="https://jitpack.io/v/kongzue/DialogX.svg" alt="Jitpack.io">
@@ -76,6 +76,12 @@ DialogX 包含以下对话框组件：
   ![简单提示 PopTip](https://github.com/kongzue/DialogX/raw/master/readme/poptip.png)
 
   提供一个类似 Toast 的文本提示功能，但它拥有更强大的自定义属性。你可以设置文本提示、图标、以及一个控制按钮，并可以设置持续显示或定义自动消失的时长。PopTip 是非阻断式提示，也就是说，在 PopTip 显示时用户依然可以操作界面。
+  
+- [简单通知提示 PopNotification](https://github.com/kongzue/DialogX/wiki/%E7%AE%80%E5%8D%95%E9%80%9A%E7%9F%A5%E6%8F%90%E7%A4%BA-PopNotification)
+
+  ![简单通知提示 PopNotification](https://github.com/kongzue/DialogX/raw/master/readme/popnotification.png)
+
+  提供一个类似 Notification 的通知样式提示功能，请注意，此组件并不能取代 Notification，默认不支持不能跨界面显示（可使用悬浮窗权限设置允许），仅用于应用内通知提示，拥有更强大的自定义属性。你可以设置文本提示、图标、以及一个控制按钮，并可以设置持续显示或定义自动消失的时长。PopNotification 是非阻断式提示，也就是说，在 PopNotification 显示时用户依然可以操作界面。
 
 - [全屏对话框 FullScreenDialog](https://github.com/kongzue/DialogX/wiki/%E5%85%A8%E5%B1%8F%E5%AF%B9%E8%AF%9D%E6%A1%86-FullScreenDialog)
 
@@ -88,6 +94,12 @@ DialogX 包含以下对话框组件：
   ![自定义对话框 CustomDialog](https://github.com/kongzue/DialogX/raw/master/readme/customdialog.png)
 
   根据定制化自由度的对话框组件，完全由用户自行实现布局内容。CustomDialog 提供了 ALIGN 选项可以轻松定制对话框弹出的方式，默认支持屏幕中央、屏幕底部、屏幕顶部、屏幕左侧、屏幕右侧多种弹出模式，也会提供相应的弹出动画效果，当然用户也可以自定义动画效果。
+
+- [引导对话框 GuideDialog](https://github.com/kongzue/DialogX/wiki/%E5%BC%95%E5%AF%BC%E5%AF%B9%E8%AF%9D%E6%A1%86-GuideDialog(Beta))
+  
+  ![引导对话框 GuideDialog](https://github.com/kongzue/DialogX/raw/master/readme/guidedialog.png)
+
+可以实现一个遮罩展示操作引导图，或者对按钮进行操作提示指引。GuideDialog 可以围绕一个界面上的组件显示，并实现舞台光的效果，舞台光可选圆形（外围、内侧）、方形（外围、内侧）和矩形模式，方形和矩形可设置圆角。
 
 # DialogX主题
 
@@ -113,17 +125,42 @@ DialogX 采用了主题分离结构，主框架仅包含 Material 设计风格�
 
 因为依赖的关系，DialogX 目前仅支持 AndroidX 作为基础进行开发，若您正在使用最新版本的 Android Studio，那么默认创建的项目就是使用 AndroidX 作为底层框架的，老版本 Android Support 兼容库将在后续更新。
 
-**以下四种引入方式请任选其一。**
-
 ### 📥引入
 
-#### 方式一：Gradle 引入  jitPack 源
+请从以下两个源二选一引入项目。
+
+#### MavenCentral 源
 
 <div>
-<b>最新版本：</b>
-<a href="https://jitpack.io/#kongzue/DialogX">
-<img src="https://jitpack.io/v/kongzue/DialogX.svg" alt="Jitpack.io">
-</a> 
+最新版本：
+<a href="https://github.com/kongzue/DialogX/releases"><img src="https://img.shields.io/badge/MavenCentral%20Release-0.0.47.beta15-green.svg" alt="DialogX Release"></a></div>
+
+1) 在 project 的 build.gradle 文件中找到 `allprojects{}` 代码块添加以下代码：
+
+```
+allprojects {
+    repositories {
+        google()
+        jcenter()
+        mavenCentral()      //增加 mavenCentral 仓库
+    }
+}
+```
+
+⚠️请注意，使用 Android Studio 北极狐版本（Arctic Fox）创建的项目，需要您前往 settings.gradle 添加上述 jitpack 仓库配置。
+
+2) 在 app 的 build.gradle 文件中找到 `dependencies{}` 代码块，并在其中加入以下语句：
+
+```
+def dialogx_version = "0.0.47.beta15"
+implementation "com.kongzue.dialogx:DialogX:${dialogx_version}"
+```
+
+#### Jitpack 源
+
+<div>
+最新版本：
+<a href="https://jitpack.io/#kongzue/DialogX"><img src="https://jitpack.io/v/kongzue/DialogX.svg" alt="Jitpack.io"></a> <a href="https://github.com/kongzue/DialogX/releases"><img src="https://img.shields.io/github/v/release/kongzue/DialogX?color=green" alt="查看最新编译版本"></a> 
 </div>
 
 1) 在 project 的 build.gradle 文件中找到 `allprojects{}` 代码块添加以下代码：
@@ -143,37 +180,8 @@ allprojects {
 2) 在 app 的 build.gradle 文件中找到 `dependencies{}` 代码块，并在其中加入以下语句：
 
 ```
-def dialogx_version = "0.0.43.beta13"
+def dialogx_version = "0.0.46"
 implementation "com.github.kongzue.DialogX:DialogX:${dialogx_version}"
-```
-
-#### 方式二：Gradle 引入 jCenter 源
-
-⚠️警告：jCenter已停止运行！
-
-想要在您的项目引入 DialogX，您需要在 app 的 build.gradle 文件中找到 `dependencies{}` 代码块，并在其中加入以下语句：
-
-```
-implementation 'com.kongzue.dialogx:DialogX:0.0.37'
-```
-
-#### 方式三：直接引入 AAR 包文件
-
-请前往 [Release](https://github.com/kongzue/DialogX/releases) 页面根据需要版本的下载 AAR 包文件。
-
-1) 将 AAR 放入 libs 目录。
-
-2) 在 Module 的 build.gradle 里加入以下代码：
-
-```
-build.gradle
-repositories{
-    flatDir {
-        dirs 'libs'
-    }
-}
-
-implementation(name: 'AAR文件名', ext: 'aar')
 ```
 
 ### ▶️使用
@@ -192,19 +200,30 @@ implementation(name: 'AAR文件名', ext: 'aar')
 
 扩展包目前尚处于初步开发阶段，要预览或提出你的建议，请访问：[DialogXSample](https://github.com/kongzue/DialogXSample)
 
-[![DialogXSample](https://github.com/kongzue/DialogXSample/raw/master/img_dialogx_sample.png)](https://github.com/kongzue/DialogXSample)
+[![DialogXSample](https://github.com/kongzue/DialogXSample/raw/master/img_sample.png)](https://github.com/kongzue/DialogXSample)
 
 ### ℹ️使用过程遇到问题？
 
 查看 [常见问题](https://github.com/kongzue/DialogX/wiki/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
 
-技术支持和反馈建议可以加讨论群：590498789
+技术支持和反馈建议可以加讨论群：[590498789](https://jq.qq.com/?_wv=1027&k=GUZToduM)
 
 <div align=center><img src="https://github.com/kongzue/DialogX/raw/master/readme/feedback_qq_qrcode.png" alt="反馈 DialogX" width="250" height="250" /></div>
+
+### ❤️Powered By DialogX
+
+[![Powered By DialogX](https://github.com/kongzue/DialogX/raw/master/readme/img_powered_by_dialogx.jpg)](https://github.com/kongzue/DialogX/wiki/%E2%9D%A4%EF%B8%8FPowered-By-DialogX)
+ 
+🚀 [更多 >](https://github.com/kongzue/DialogX/wiki/❤️Powered-By-DialogX)
 
 ### 🔁如何从 DialogV3 迁移至 DialogX
 
 请参考文章 [从 DialogV3 迁移至 DialogX](https://github.com/kongzue/DialogX/wiki/%E4%BB%8E-DialogV3-%E8%BF%81%E7%A7%BB%E8%87%B3-DialogX)
+
+
+# ⭐观星者
+
+[![Stargazers over time](https://starchart.cc/kongzue/DialogX.svg?a=4)]([https://starchart.cc/kongzue/DialogX](https://github.com/kongzue/DialogX/stargazers))
 
 # 开源协议
 
@@ -225,3 +244,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
+
+# 贡献者
+感谢所有为 DialogX 做出贡献的人！
+
+如果 DialogX 帮助您更好的构建了您的软件，请为 DialogX 点一个小小的 Star，您的每一次点击对 DialogX 都是最大的支持！
+
+[![Stargazers repo roster for @kongzue/DialogX](https://reporoster.com/stars/kongzue/DialogX)](https://github.com/kongzue/DialogX/stargazers)
+
+### 协助开发
+
+<a href="https://github.com/kongzue/DialogX/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=kongzue/DialogX" />
+</a>
+

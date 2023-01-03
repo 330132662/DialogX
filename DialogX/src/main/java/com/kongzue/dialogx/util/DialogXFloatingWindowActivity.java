@@ -10,13 +10,11 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.kongzue.dialogx.R;
-import com.kongzue.dialogx.dialogs.PopTip;
 import com.kongzue.dialogx.interfaces.BaseDialog;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * @author: Kongzue
@@ -58,8 +56,8 @@ public class DialogXFloatingWindowActivity extends AppCompatActivity {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() != MotionEvent.ACTION_CANCEL) {
-                    if (BaseDialog.getContext() != null) {
-                        return ((Activity) BaseDialog.getContext()).dispatchTouchEvent(event);
+                    if (BaseDialog.getTopActivity() != null && !(BaseDialog.getTopActivity() instanceof DialogXFloatingWindowActivity)) {
+                        return ((Activity) BaseDialog.getTopActivity()).dispatchTouchEvent(event);
                     }
                 }
                 return false;
@@ -96,7 +94,9 @@ public class DialogXFloatingWindowActivity extends AppCompatActivity {
     public void finish(String dialogXKey) {
         shownDialogXList.remove(dialogXKey);
         if (shownDialogXList.isEmpty()) {
-            dialogXFloatingWindowActivity.clear();
+            if (dialogXFloatingWindowActivity != null) {
+                dialogXFloatingWindowActivity.clear();
+            }
             dialogXFloatingWindowActivity = null;
             super.finish();
             int version = Integer.valueOf(Build.VERSION.SDK_INT);
@@ -107,12 +107,25 @@ public class DialogXFloatingWindowActivity extends AppCompatActivity {
     }
     
     public void finish() {
-        dialogXFloatingWindowActivity.clear();
+        if (dialogXFloatingWindowActivity != null) {
+            dialogXFloatingWindowActivity.clear();
+        }
         dialogXFloatingWindowActivity = null;
         super.finish();
         int version = Integer.valueOf(Build.VERSION.SDK_INT);
         if (version > 5) {
             overridePendingTransition(0, 0);
         }
+    }
+    
+    boolean isScreenshot;
+    
+    public boolean isScreenshot() {
+        return isScreenshot;
+    }
+    
+    public DialogXFloatingWindowActivity setScreenshot(boolean screenshot) {
+        isScreenshot = screenshot;
+        return this;
     }
 }

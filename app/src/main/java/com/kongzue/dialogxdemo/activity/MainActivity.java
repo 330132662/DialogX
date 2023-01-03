@@ -1,22 +1,34 @@
 package com.kongzue.dialogxdemo.activity;
 
+import android.animation.ValueAnimator;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.Rect;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -24,12 +36,15 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.fragment.app.FragmentManager;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.kongzue.baseframework.BaseActivity;
 import com.kongzue.baseframework.interfaces.DarkNavigationBarTheme;
 import com.kongzue.baseframework.interfaces.DarkStatusBarTheme;
@@ -42,29 +57,36 @@ import com.kongzue.dialogx.dialogs.BottomDialog;
 import com.kongzue.dialogx.dialogs.BottomMenu;
 import com.kongzue.dialogx.dialogs.CustomDialog;
 import com.kongzue.dialogx.dialogs.FullScreenDialog;
+import com.kongzue.dialogx.dialogs.GuideDialog;
 import com.kongzue.dialogx.dialogs.InputDialog;
 import com.kongzue.dialogx.dialogs.MessageDialog;
 import com.kongzue.dialogx.dialogs.PopMenu;
+import com.kongzue.dialogx.dialogs.PopNotification;
 import com.kongzue.dialogx.dialogs.PopTip;
 import com.kongzue.dialogx.dialogs.TipDialog;
 import com.kongzue.dialogx.dialogs.WaitDialog;
 import com.kongzue.dialogx.interfaces.BaseDialog;
+import com.kongzue.dialogx.interfaces.BottomDialogSlideEventLifecycleCallback;
 import com.kongzue.dialogx.interfaces.DialogLifecycleCallback;
+import com.kongzue.dialogx.interfaces.DialogXAnimInterface;
+import com.kongzue.dialogx.interfaces.DialogXStyle;
+import com.kongzue.dialogx.interfaces.MenuItemTextInfoInterceptor;
 import com.kongzue.dialogx.interfaces.OnBackPressedListener;
+import com.kongzue.dialogx.interfaces.OnBackgroundMaskClickListener;
 import com.kongzue.dialogx.interfaces.OnBindView;
 import com.kongzue.dialogx.interfaces.OnDialogButtonClickListener;
 import com.kongzue.dialogx.interfaces.OnIconChangeCallBack;
 import com.kongzue.dialogx.interfaces.OnInputDialogButtonClickListener;
 import com.kongzue.dialogx.interfaces.OnMenuItemClickListener;
 import com.kongzue.dialogx.interfaces.OnMenuItemSelectListener;
-import com.kongzue.dialogx.interfaces.OnSafeInsetsChangeListener;
 import com.kongzue.dialogx.style.IOSStyle;
 import com.kongzue.dialogx.style.KongzueStyle;
 import com.kongzue.dialogx.style.MIUIStyle;
 import com.kongzue.dialogx.style.MaterialStyle;
-import com.kongzue.dialogx.util.DialogXFloatingWindowActivity;
+import com.kongzue.dialogx.util.InputInfo;
+import com.kongzue.dialogx.util.ObjectRunnable;
 import com.kongzue.dialogx.util.TextInfo;
-import com.kongzue.dialogx.util.views.DialogXBaseRelativeLayout;
+import com.kongzue.dialogx.util.views.ActivityScreenShotImageView;
 import com.kongzue.dialogxdemo.BuildConfig;
 import com.kongzue.dialogxdemo.R;
 import com.kongzue.dialogxdemo.custom.recycleview.CustomRecycleViewAdapter;
@@ -73,76 +95,81 @@ import com.kongzue.dialogxmaterialyou.style.MaterialYouStyle;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 @Layout(R.layout.activity_main)
 @DarkStatusBarTheme(true)
 @DarkNavigationBarTheme(true)
 @NavigationBarBackgroundColorRes(R.color.emptyNavBar)
 public class MainActivity extends BaseActivity {
-    
-    private RelativeLayout boxTable;
-    private LinearLayout boxTableChild;
-    private LinearLayout btnBack;
-    private ImageView btnShare;
+
+    private ConstraintLayout boxTitle;
     private TextView txtTitle;
+    private ImageView btnShare;
+    private ImageView splitBody;
     private LinearLayout boxBody;
-    private RadioGroup grpMode;
-    private RadioButton rdoModeView;
-    private RadioButton rdoModeWindow;
-    private RadioButton rdoModeDialogFragment;
-    private RadioButton rdoModeFloatingActivity;
-    private RadioGroup grpStyle;
-    private RadioButton rdoMaterial;
-    private RadioButton rdoIos;
-    private RadioButton rdoKongzue;
-    private RadioButton rdoMiui;
-    private RadioButton rdoMaterialYou;
-    private RadioGroup grpTheme;
-    private RadioButton rdoAuto;
-    private RadioButton rdoLight;
-    private RadioButton rdoDark;
-    private TextView btnMessageDialog;
-    private TextView btnSelectDialog;
-    private TextView btnInputDialog;
-    private TextView btnWaitDialog;
-    private TextView btnWaitAndTipDialog;
-    private TextView btnTipSuccess;
-    private TextView btnTipWarning;
-    private TextView btnTipError;
-    private TextView btnTipProgress;
-    private TextView btnPoptip;
-    private TextView btnPoptipBigMessage;
-    private TextView btnBottomDialog;
-    private TextView btnBottomMenu;
-    private TextView btnBottomReply;
-    private TextView btnBottomSelectMenu;
-    private TextView btnBottomMultiSelectMenu;
-    private TextView btnBottomCustomRecycleView;
-    private TextView btnCustomMessageDialog;
-    private TextView btnCustomInputDialog;
-    private TextView btnCustomBottomMenu;
-    private TextView btnCustomDialog;
-    private TextView btnFullScreenDialogWebPage;
-    private TextView btnFullScreenDialogLogin;
-    private TextView btnFullScreenDialogFragment;
-    private TextView btnContextMenu;
+    private MaterialButtonToggleGroup grpStyle;
+    private MaterialButton rdoMaterial;
+    private MaterialButton rdoIos;
+    private MaterialButton rdoKongzue;
+    private MaterialButton rdoMiui;
+    private MaterialButton rdoMaterialYou;
+    private MaterialButtonToggleGroup grpTheme;
+    private MaterialButton rdoAuto;
+    private MaterialButton rdoLight;
+    private MaterialButton rdoDark;
+    private MaterialButtonToggleGroup grpMode;
+    private MaterialButton rdoModeView;
+    private MaterialButton rdoModeWindow;
+    private MaterialButton rdoModeDialogFragment;
+    private MaterialButton rdoModeFloatingActivity;
+    private MaterialButton btnMessageDialog;
+    private MaterialButton btnSelectDialog;
+    private MaterialButton btnInputDialog;
+    private MaterialButton btnWaitDialog;
+    private MaterialButton btnWaitAndTipDialog;
+    private MaterialButton btnTipSuccess;
+    private MaterialButton btnTipWarning;
+    private MaterialButton btnTipError;
+    private MaterialButton btnTipProgress;
+    private MaterialButton btnPoptip;
+    private MaterialButton btnPoptipBigMessage;
+    private MaterialButton btnPoptipSuccess;
+    private MaterialButton btnPoptipWarning;
+    private MaterialButton btnPoptipError;
+    private MaterialButton btnPopnotification;
+    private MaterialButton btnPopnotificationBigMessage;
+    private MaterialButton btnPopnotificationOverlay;
+    private MaterialButton btnBottomDialog;
+    private MaterialButton btnBottomMenu;
+    private MaterialButton btnBottomReply;
+    private MaterialButton btnBottomSelectMenu;
+    private MaterialButton btnBottomMultiSelectMenu;
+    private MaterialButton btnBottomCustomRecycleView;
+    private MaterialButton btnCustomMessageDialog;
+    private MaterialButton btnCustomInputDialog;
+    private MaterialButton btnCustomBottomMenu;
+    private MaterialButton btnCustomDialog;
+    private MaterialButton btnCustomDialogAlign;
+    private MaterialButton btnFullScreenDialogWebPage;
+    private MaterialButton btnFullScreenDialogLogin;
+    private MaterialButton btnFullScreenDialogFragment;
+    private MaterialButton btnContextMenu;
     private TextView btnSelectMenu;
-    private TextView btnShowBreak;
+    private MaterialButton btnShowGuide;
+    private MaterialButton btnShowGuideBaseView;
+    private MaterialButton btnShowGuideBaseViewRectangle;
+    private MaterialButton btnShowBreak;
+    private MaterialButton btnListDialog;
     private TextView txtVer;
-    
+
     @Override
     public void initViews() {
-        boxTable = findViewById(R.id.box_table);
-        boxTableChild = findViewById(R.id.box_table_child);
-        btnBack = findViewById(R.id.btn_back);
-        btnShare = findViewById(R.id.btn_share);
+        boxTitle = findViewById(R.id.box_title);
         txtTitle = findViewById(R.id.txt_title);
+        btnShare = findViewById(R.id.btn_share);
+        splitBody = findViewById(R.id.split_body);
         boxBody = findViewById(R.id.box_body);
-        grpMode = findViewById(R.id.grp_mode);
-        rdoModeView = findViewById(R.id.rdo_mode_view);
-        rdoModeWindow = findViewById(R.id.rdo_mode_window);
-        rdoModeDialogFragment = findViewById(R.id.rdo_mode_dialogFragment);
-        rdoModeFloatingActivity = findViewById(R.id.rdo_mode_floatingActivity);
         grpStyle = findViewById(R.id.grp_style);
         rdoMaterial = findViewById(R.id.rdo_material);
         rdoIos = findViewById(R.id.rdo_ios);
@@ -153,6 +180,11 @@ public class MainActivity extends BaseActivity {
         rdoAuto = findViewById(R.id.rdo_auto);
         rdoLight = findViewById(R.id.rdo_light);
         rdoDark = findViewById(R.id.rdo_dark);
+        grpMode = findViewById(R.id.grp_mode);
+        rdoModeView = findViewById(R.id.rdo_mode_view);
+        rdoModeWindow = findViewById(R.id.rdo_mode_window);
+        rdoModeDialogFragment = findViewById(R.id.rdo_mode_dialogFragment);
+        rdoModeFloatingActivity = findViewById(R.id.rdo_mode_floatingActivity);
         btnMessageDialog = findViewById(R.id.btn_messageDialog);
         btnSelectDialog = findViewById(R.id.btn_selectDialog);
         btnInputDialog = findViewById(R.id.btn_inputDialog);
@@ -164,6 +196,12 @@ public class MainActivity extends BaseActivity {
         btnTipProgress = findViewById(R.id.btn_tipProgress);
         btnPoptip = findViewById(R.id.btn_poptip);
         btnPoptipBigMessage = findViewById(R.id.btn_poptip_bigMessage);
+        btnPoptipSuccess = findViewById(R.id.btn_poptip_success);
+        btnPoptipWarning = findViewById(R.id.btn_poptip_warning);
+        btnPoptipError = findViewById(R.id.btn_poptip_error);
+        btnPopnotification = findViewById(R.id.btn_popnotification);
+        btnPopnotificationBigMessage = findViewById(R.id.btn_popnotification_bigMessage);
+        btnPopnotificationOverlay = findViewById(R.id.btn_popnotification_overlay);
         btnBottomDialog = findViewById(R.id.btn_bottom_dialog);
         btnBottomMenu = findViewById(R.id.btn_bottom_menu);
         btnBottomReply = findViewById(R.id.btn_bottom_reply);
@@ -174,26 +212,44 @@ public class MainActivity extends BaseActivity {
         btnCustomInputDialog = findViewById(R.id.btn_customInputDialog);
         btnCustomBottomMenu = findViewById(R.id.btn_customBottomMenu);
         btnCustomDialog = findViewById(R.id.btn_customDialog);
+        btnCustomDialogAlign = findViewById(R.id.btn_customDialogAlign);
         btnFullScreenDialogWebPage = findViewById(R.id.btn_fullScreenDialog_webPage);
         btnFullScreenDialogLogin = findViewById(R.id.btn_fullScreenDialog_login);
         btnFullScreenDialogFragment = findViewById(R.id.btn_fullScreenDialog_fragment);
         btnContextMenu = findViewById(R.id.btn_contextMenu);
         btnSelectMenu = findViewById(R.id.btn_selectMenu);
+        btnShowGuide = findViewById(R.id.btn_showGuide);
+        btnShowGuideBaseView = findViewById(R.id.btn_showGuideBaseView);
+        btnShowGuideBaseViewRectangle = findViewById(R.id.btn_showGuideBaseViewRectangle);
         btnShowBreak = findViewById(R.id.btn_showBreak);
+        btnListDialog = findViewById(R.id.btn_listDialog);
         txtVer = findViewById(R.id.txt_ver);
     }
-    
+
     @Override
     public void initDatas(JumpParameter parameter) {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
-        
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+            getWindow().getDecorView().setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+                @Override
+                public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                    boxTitle.setPadding(0, insets.getSystemWindowInsetTop(), 0, 0);
+                    boxBody.setPadding(dip2px(15), dip2px(15), dip2px(15), insets.getSystemWindowInsetBottom()+dip2px(250));
+                    return insets;
+                }
+            });
+        } else {
+            getRootView().setFitsSystemWindows(true);
+        }
+
         refreshUIMode();
         boolean showBreak = parameter.getBoolean("showBreak");
         if (showBreak) {
             txtTitle.setText("显示Dialog时关闭Activity演示");
             MessageDialog.show("提示", "接下来会直接运行一个 WaitDialog，2 秒后直接关闭 Activity，并回到原 Activity，保证程序不会出现 WindowLeaked 错误。\n\n" +
-                    "Android 原生 AlertDialog 常出现因 Dialog 先于 Activity 关闭而导致此错误引发程序崩溃。\n\n" +
-                    "而使用 DialogX 构建的对话框不仅仅不会出现此问题，还可避免因句柄持续持有导致的内存泄漏。", "开始测试", "取消")
+                            "Android 原生 AlertDialog 常出现因 Activity 先于 Dialog 关闭而导致此错误引发程序崩溃。\n\n" +
+                            "而使用 DialogX 构建的对话框不仅仅不会出现此问题，还可避免因句柄持续持有导致的内存泄漏。", "开始测试", "取消")
                     .setOkButton(new OnDialogButtonClickListener() {
                         @Override
                         public boolean onClick(BaseDialog baseDialog, View v) {
@@ -216,7 +272,7 @@ public class MainActivity extends BaseActivity {
                     })
                     .setCancelable(false);
         }
-        
+
         switch (DialogX.implIMPLMode) {
             case VIEW:
                 rdoModeView.setChecked(true);
@@ -231,40 +287,41 @@ public class MainActivity extends BaseActivity {
                 rdoModeFloatingActivity.setChecked(true);
                 break;
         }
-        
+
         txtVer.setText("当前版本：" + BuildConfig.VERSION_NAME);
     }
-    
+
     //用于模拟进度提示
     private CycleRunner cycleRunner;
     private float progress = 0;
     private int waitId;
-    
+
     private TextView btnReplyCommit;
     private EditText editReplyCommit;
-    
+
     private TextView btnCancel;
     private TextView btnSubmit;
     private RelativeLayout boxUserName;
     private EditText editUserName;
-    private EditText editPassword;
     private RelativeLayout boxPassword;
+    private EditText editPassword;
+    private TextView btnLicense;
 
     private TextView btnClose;
     private WebView webView;
-    
+
     private String[] singleSelectMenuText = new String[]{"拒绝", "询问", "始终允许", "仅在使用中允许"};
     private int selectMenuIndex;
-    
+
     private String[] multiSelectMenuText = new String[]{"上海", "北京", "广州", "深圳"};
     private int[] selectMenuIndexArray;
     private String multiSelectMenuResultCache;
-    
+
     @Override
     public void setEvents() {
-        grpMode.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+        grpMode.addOnButtonCheckedListener(new MaterialButtonToggleGroup.OnButtonCheckedListener() {
             @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
+            public void onButtonChecked(MaterialButtonToggleGroup group, int checkedId, boolean isChecked) {
                 BaseDialog.cleanAll();
                 switch (checkedId) {
                     case R.id.rdo_mode_view:
@@ -282,10 +339,10 @@ public class MainActivity extends BaseActivity {
                 }
             }
         });
-        
-        grpTheme.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+
+        grpTheme.addOnButtonCheckedListener(new MaterialButtonToggleGroup.OnButtonCheckedListener() {
             @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
+            public void onButtonChecked(MaterialButtonToggleGroup group, int checkedId, boolean isChecked) {
                 switch (checkedId) {
                     case R.id.rdo_auto:
                         DialogX.globalTheme = DialogX.THEME.AUTO;
@@ -299,11 +356,13 @@ public class MainActivity extends BaseActivity {
                 }
             }
         });
-        
-        grpStyle.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+
+        grpStyle.addOnButtonCheckedListener(new MaterialButtonToggleGroup.OnButtonCheckedListener() {
             @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
+            public void onButtonChecked(MaterialButtonToggleGroup group, int checkedId, boolean isChecked) {
                 DialogX.cancelButtonText = "取消";
+                DialogX.titleTextInfo = null;
+                DialogX.buttonTextInfo = null;
                 switch (checkedId) {
                     case R.id.rdo_material:
                         DialogX.globalStyle = MaterialStyle.style();
@@ -324,43 +383,52 @@ public class MainActivity extends BaseActivity {
                 }
             }
         });
-        
+
         btnShare.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 openUrl("https://github.com/kongzue/DialogX");
             }
         });
-        
+
         btnContextMenu.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 PopMenu.show(new String[]{"添加", "编辑", "删除", "分享"})
+                        .setOnMenuItemClickListener(new OnMenuItemClickListener<PopMenu>() {
+                            @Override
+                            public boolean onClick(PopMenu dialog, CharSequence text, int index) {
+                                if (index == 0) {
+                                    dialog.setMenuList(new String[]{"产品A", "产品B", "产品C"});
+                                    return true;
+                                }
+                                return false;
+                            }
+                        })
                         .setOnIconChangeCallBack(new OnIconChangeCallBack<PopMenu>(true) {
-                    @Override
-                    public int getIcon(PopMenu dialog, int index, String menuText) {
-                        switch (index) {
-                            case 0:
-                                return R.mipmap.img_dialogx_demo_add;
-                            case 1:
-                                return R.mipmap.img_dialogx_demo_edit;
-                            case 2:
-                                return R.mipmap.img_dialogx_demo_delete;
-                            case 3:
-                                return R.mipmap.img_dialogx_demo_share;
-                            default:
-                                return 0;
-                        }
-                    }
-                });
+                            @Override
+                            public int getIcon(PopMenu dialog, int index, String menuText) {
+                                switch (menuText) {
+                                    case "添加":
+                                        return R.mipmap.img_dialogx_demo_add;
+                                    case "编辑":
+                                        return R.mipmap.img_dialogx_demo_edit;
+                                    case "删除":
+                                        return R.mipmap.img_dialogx_demo_delete;
+                                    case "分享":
+                                        return R.mipmap.img_dialogx_demo_share;
+                                    default:
+                                        return 0;
+                                }
+                            }
+                        });
             }
         });
-        
+
         btnSelectMenu.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                PopMenu.show(v, new String[]{"选项1", "选项2", "选项3"})
-                        .setOverlayBaseView(true)
+            public void onClick(View view) {
+                PopMenu.show(view, new String[]{"选项1", "选项2", "选项3"})
                         .setOnMenuItemClickListener(new OnMenuItemClickListener<PopMenu>() {
                             @Override
                             public boolean onClick(PopMenu dialog, CharSequence text, int index) {
@@ -370,51 +438,58 @@ public class MainActivity extends BaseActivity {
                         });
             }
         });
-        
+
         btnFullScreenDialogFragment.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                CustomFragment customFragment = new CustomFragment();
+                CustomFragment customFragment = new CustomFragment()
+                        .setAddButtonClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                btnFullScreenDialogFragment.callOnClick();
+                            }
+                        });
                 FullScreenDialog.show(new OnBindView<FullScreenDialog>(customFragment) {
                     @Override
                     public void onBind(FullScreenDialog dialog, View v) {
-                    
+
                     }
                 });
             }
         });
-        
+
         btnMessageDialog.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                MessageDialog.show("标题", "这里是正文内容。", "确定").setOkButton(new OnDialogButtonClickListener<MessageDialog>() {
-                    @Override
-                    public boolean onClick(MessageDialog baseDialog, View v) {
-                        PopTip.show("点击确定按钮");
-                        return false;
-                    }
-                });
+                MessageDialog.show("标题", "这里是正文内容。", "确定")
+                        .setTitleIcon(R.mipmap.img_demo_avatar)
+                        .setOkButton(new OnDialogButtonClickListener<MessageDialog>() {
+                            @Override
+                            public boolean onClick(MessageDialog baseDialog, View v) {
+                                PopTip.show("点击确定按钮");
+                                return false;
+                            }
+                        });
             }
         });
-        
+
         btnSelectDialog.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 MessageDialog messageDialog = new MessageDialog("多选对话框", "移除App会将它从主屏幕移除并保留其所有数据。", "删除App", "取消", "移至App资源库")
                         .setButtonOrientation(LinearLayout.VERTICAL);
                 if (!rdoMiui.isChecked()) {
-                    messageDialog.setOkTextInfo(new TextInfo().setFontColor(Color.parseColor("#EB5545")));
+                    messageDialog.setOkTextInfo(new TextInfo().setFontColor(Color.parseColor("#EB5545")).setBold(true));
                 }
                 messageDialog.show();
             }
         });
-        
+
         btnInputDialog.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 new InputDialog("标题", "正文内容", "确定", "取消", "正在输入的文字")
                         .setInputText("Hello World")
-                        .setCancelable(false)
                         .setOkButton(new OnInputDialogButtonClickListener<InputDialog>() {
                             @Override
                             public boolean onClick(InputDialog baseDialog, View v, String inputStr) {
@@ -425,13 +500,13 @@ public class MainActivity extends BaseActivity {
                         .show();
             }
         });
-        
+
         btnWaitDialog.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                WaitDialog.show("Please Wait!").setOnBackPressedListener(new OnBackPressedListener() {
+                WaitDialog.show("Please Wait!").setOnBackPressedListener(new OnBackPressedListener<WaitDialog>() {
                     @Override
-                    public boolean onBackPressed() {
+                    public boolean onBackPressed(WaitDialog dialog) {
                         PopTip.show("按下返回");
                         return false;
                     }
@@ -441,20 +516,20 @@ public class MainActivity extends BaseActivity {
                     public void run() {
                         WaitDialog.dismiss();
                     }
-                }, 2000);
+                }, 1500);
             }
         });
-        
+
         btnWaitAndTipDialog.setOnClickListener(new View.OnClickListener() {
-            
+
             boolean closeFlag = false;
-            
+
             @Override
             public void onClick(View v) {
                 closeFlag = false;
-                WaitDialog.show("Please Wait!").setOnBackPressedListener(new OnBackPressedListener() {
+                WaitDialog.show("Please Wait!").setOnBackPressedListener(new OnBackPressedListener<WaitDialog>() {
                     @Override
-                    public boolean onBackPressed() {
+                    public boolean onBackPressed(WaitDialog dialog) {
                         PopTip.show("按下返回", "关闭").setButton(new OnDialogButtonClickListener<PopTip>() {
                             @Override
                             public boolean onClick(PopTip baseDialog, View v) {
@@ -471,39 +546,39 @@ public class MainActivity extends BaseActivity {
                     public void run() {
                         if (!closeFlag) TipDialog.show("完成！", WaitDialog.TYPE.SUCCESS);
                     }
-                }, 2000);
+                }, 1500 + new Random().nextInt(1000));
             }
         });
-        
+
         btnTipSuccess.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 TipDialog.show("Success!", WaitDialog.TYPE.SUCCESS);
             }
         });
-        
+
         btnTipWarning.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 TipDialog.show("Warning!", WaitDialog.TYPE.WARNING);
             }
         });
-        
+
         btnTipError.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 TipDialog.show("Error!", WaitDialog.TYPE.ERROR);
             }
         });
-        
+
         btnTipProgress.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 waitId = 0;
                 progress = 0;
-                WaitDialog.show("假装连接...").setOnBackPressedListener(new OnBackPressedListener() {
+                WaitDialog.show("假装连接...").setOnBackPressedListener(new OnBackPressedListener<WaitDialog>() {
                     @Override
-                    public boolean onBackPressed() {
+                    public boolean onBackPressed(WaitDialog dialog) {
                         MessageDialog.show("正在进行", "是否取消？", "是", "否").setOkButton(new OnDialogButtonClickListener() {
                             @Override
                             public boolean onClick(BaseDialog baseDialog, View v) {
@@ -541,7 +616,7 @@ public class MainActivity extends BaseActivity {
                 }, 3000);
             }
         });
-        
+
         btnBottomDialog.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -556,86 +631,104 @@ public class MainActivity extends BaseActivity {
                                 v.setOnClickListener(new View.OnClickListener() {
                                     @Override
                                     public void onClick(View v) {
+                                        dialog.dismiss();
                                         PopTip.show("Click Custom View");
                                     }
                                 });
                             }
                         })
+                        .setDialogLifecycleCallback(new BottomDialogSlideEventLifecycleCallback<BottomDialog>() {
+                            @Override
+                            public boolean onSlideClose(BottomDialog dialog) {
+                                log("#onSlideClose");
+                                return super.onSlideClose(dialog);
+                            }
+
+                            @Override
+                            public boolean onSlideTouchEvent(BottomDialog dialog, View v, MotionEvent event) {
+                                log("#onSlideTouchEvent: action=" + event.getAction() + " y=" + event.getY());
+                                return super.onSlideTouchEvent(dialog, v, event);
+                            }
+                        })
                         .show();
             }
         });
-        
+
         btnBottomMenu.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (rdoMaterial.isChecked()) {
                     //Material 可滑动展开 BottomMenu 演示
-                    //因数据量大，尝试异步线程启动
-                    new Thread() {
-                        @Override
-                        public void run() {
-                            super.run();
-                            BottomMenu.build()
-                                    .setMenuList(new String[]{"添加", "查看", "编辑", "删除", "分享", "评论", "下载", "收藏", "赞！", "不喜欢", "所属专辑", "复制链接", "类似推荐", "添加", "查看", "编辑", "删除", "分享", "评论", "下载", "收藏", "赞！", "不喜欢", "所属专辑", "复制链接", "类似推荐"})
-                                    .setOnIconChangeCallBack(new OnIconChangeCallBack<BottomMenu>(true) {
-                                        @Override
-                                        public int getIcon(BottomMenu bottomMenu, int index, String menuText) {
-                                            switch (menuText) {
-                                                case "添加":
-                                                    return R.mipmap.img_dialogx_demo_add;
-                                                case "查看":
-                                                    return R.mipmap.img_dialogx_demo_view;
-                                                case "编辑":
-                                                    return R.mipmap.img_dialogx_demo_edit;
-                                                case "删除":
-                                                    return R.mipmap.img_dialogx_demo_delete;
-                                                case "分享":
-                                                    return R.mipmap.img_dialogx_demo_share;
-                                                case "评论":
-                                                    return R.mipmap.img_dialogx_demo_comment;
-                                                case "下载":
-                                                    return R.mipmap.img_dialogx_demo_download;
-                                                case "收藏":
-                                                    return R.mipmap.img_dialogx_demo_favorite;
-                                                case "赞！":
-                                                    return R.mipmap.img_dialogx_demo_good;
-                                                case "不喜欢":
-                                                    return R.mipmap.img_dialogx_demo_dislike;
-                                                case "所属专辑":
-                                                    return R.mipmap.img_dialogx_demo_album;
-                                                case "复制链接":
-                                                    return R.mipmap.img_dialogx_demo_link;
-                                                case "类似推荐":
-                                                    return R.mipmap.img_dialogx_demo_recommend;
-                                            }
-                                            return 0;
-                                        }
-                                    })
-                                    .setOnMenuItemClickListener(new OnMenuItemClickListener<BottomMenu>() {
-                                        @Override
-                                        public boolean onClick(BottomMenu dialog, CharSequence text, int index) {
-                                            PopTip.show(text);
-                                            return false;
-                                        }
-                                    })
-                                    .show();
-                        }
-                    }.start();
-                } else {
-                    BottomMenu.show(new String[]{"新标签页中打开", "稍后阅读", "复制链接网址"})
-                            .setMessage("http://www.kongzue.com/DialogX")
+                    BottomMenu.build()
+                            .setBottomDialogMaxHeight(0.6f)
+                            .setMenuList(new String[]{"添加", "查看", "编辑", "删除", "分享", "评论", "下载", "收藏", "赞！", "不喜欢", "所属专辑", "复制链接", "类似推荐", "添加", "查看", "编辑", "删除", "分享", "评论", "下载", "收藏", "赞！", "不喜欢", "所属专辑", "复制链接", "类似推荐"})
+                            .setOnIconChangeCallBack(new OnIconChangeCallBack<BottomMenu>(true) {
+                                @Override
+                                public int getIcon(BottomMenu bottomMenu, int index, String menuText) {
+                                    switch (menuText) {
+                                        case "添加":
+                                            return R.mipmap.img_dialogx_demo_add;
+                                        case "查看":
+                                            return R.mipmap.img_dialogx_demo_view;
+                                        case "编辑":
+                                            return R.mipmap.img_dialogx_demo_edit;
+                                        case "删除":
+                                            return R.mipmap.img_dialogx_demo_delete;
+                                        case "分享":
+                                            return R.mipmap.img_dialogx_demo_share;
+                                        case "评论":
+                                            return R.mipmap.img_dialogx_demo_comment;
+                                        case "下载":
+                                            return R.mipmap.img_dialogx_demo_download;
+                                        case "收藏":
+                                            return R.mipmap.img_dialogx_demo_favorite;
+                                        case "赞！":
+                                            return R.mipmap.img_dialogx_demo_good;
+                                        case "不喜欢":
+                                            return R.mipmap.img_dialogx_demo_dislike;
+                                        case "所属专辑":
+                                            return R.mipmap.img_dialogx_demo_album;
+                                        case "复制链接":
+                                            return R.mipmap.img_dialogx_demo_link;
+                                        case "类似推荐":
+                                            return R.mipmap.img_dialogx_demo_recommend;
+                                    }
+                                    return 0;
+                                }
+                            })
                             .setOnMenuItemClickListener(new OnMenuItemClickListener<BottomMenu>() {
                                 @Override
                                 public boolean onClick(BottomMenu dialog, CharSequence text, int index) {
                                     PopTip.show(text);
-                                    dialog.setMenuList(new String[]{"test", "test2", "test3"});
+                                    return false;
+                                }
+                            })
+                            .show();
+                } else {
+                    BottomMenu.show(new String[]{"新标签页中打开", "稍后阅读", "复制链接网址"})
+                            .setMessage("http://www.kongzue.com/DialogX")
+                            .setMenuItemTextInfoInterceptor(new MenuItemTextInfoInterceptor<BottomMenu>() {
+                                @Override
+                                public TextInfo menuItemTextInfo(BottomMenu dialog, int index, String menuText) {
+                                    if (index == 2) {
+                                        return new TextInfo()
+                                                .setFontColor(Color.RED)
+                                                .setBold(true);
+                                    }
+                                    return null;
+                                }
+                            })
+                            .setOnMenuItemClickListener(new OnMenuItemClickListener<BottomMenu>() {
+                                @Override
+                                public boolean onClick(BottomMenu dialog, CharSequence text, int index) {
+                                    PopTip.show(text);
                                     return false;
                                 }
                             });
                 }
             }
         });
-        
+
         btnBottomReply.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -661,7 +754,7 @@ public class MainActivity extends BaseActivity {
                 }).setAllowInterceptTouch(false);
             }
         });
-        
+
         btnCustomMessageDialog.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -669,12 +762,12 @@ public class MainActivity extends BaseActivity {
                         .setCustomView(new OnBindView<MessageDialog>(R.layout.layout_custom_view) {
                             @Override
                             public void onBind(MessageDialog dialog, View v) {
-                            
+
                             }
                         });
             }
         });
-        
+
         btnCustomInputDialog.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -682,12 +775,12 @@ public class MainActivity extends BaseActivity {
                         .setCustomView(new OnBindView<MessageDialog>(R.layout.layout_custom_view) {
                             @Override
                             public void onBind(MessageDialog dialog, View v) {
-                            
+
                             }
                         });
             }
         });
-        
+
         btnCustomBottomMenu.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -703,30 +796,104 @@ public class MainActivity extends BaseActivity {
                         .setCustomView(new OnBindView<BottomDialog>(R.layout.layout_custom_view) {
                             @Override
                             public void onBind(BottomDialog dialog, View v) {
-                            
+
                             }
                         });
             }
         });
-        
+
+        btnShowGuide.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                GuideDialog.show(R.mipmap.img_guide_tip);
+            }
+        });
+
+        btnShowGuideBaseView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                GuideDialog.show(btnFullScreenDialogLogin, R.mipmap.img_tip_login)
+                        .setBaseViewMarginTop(-dip2px(30));
+            }
+        });
+
+        btnShowGuideBaseViewRectangle.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                GuideDialog.show(btnCustomDialogAlign,
+                                GuideDialog.STAGE_LIGHT_TYPE.RECTANGLE,
+                                R.mipmap.img_tip_login_clicktest)
+                        .setStageLightFilletRadius(dip2px(5))
+                        .setBaseViewMarginTop(-dip2px(30))
+                        .setOnBackgroundMaskClickListener(new OnBackgroundMaskClickListener<CustomDialog>() {
+                            @Override
+                            public boolean onClick(CustomDialog dialog, View v) {
+                                toast("点击了外围遮罩");
+                                return false;
+                            }
+                        })
+                        .setOnStageLightPathClickListener(new OnDialogButtonClickListener<GuideDialog>() {
+                            @Override
+                            public boolean onClick(GuideDialog dialog, View v) {
+                                toast("点击了原按钮");
+                                btnCustomDialogAlign.callOnClick();
+                                return false;
+                            }
+                        });
+            }
+        });
+
         btnShowBreak.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 jump(MainActivity.class, new JumpParameter().put("showBreak", true).put("fromActivity", getInstanceKey()));
             }
         });
-        
+
+        btnListDialog.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                DialogX.showDialogList(
+                        MessageDialog.build().setTitle("提示").setMessage("这是一组消息对话框队列").setOkButton("开始").setCancelButton("取消")
+                                .setCancelButton(new OnDialogButtonClickListener<MessageDialog>() {
+                                    @Override
+                                    public boolean onClick(MessageDialog dialog, View v) {
+                                        dialog.cleanDialogList();
+                                        return false;
+                                    }
+                                }),
+                        PopTip.build().setMessage("每个对话框会依次显示"),
+                        PopNotification.build().setTitle("通知提示").setMessage("直到上一个对话框消失"),
+                        InputDialog.build().setTitle("请注意").setMessage("你必须使用 .build() 方法构建，并保证不要自己执行 .show() 方法").setInputText("输入文字").setOkButton("知道了"),
+                        TipDialog.build().setMessageContent("准备结束...").setTipType(WaitDialog.TYPE.SUCCESS),
+                        BottomDialog.build().setTitle("结束").setMessage("下滑以结束旅程，祝你编码愉快！").setCustomView(new OnBindView<BottomDialog>(R.layout.layout_custom_dialog) {
+                            @Override
+                            public void onBind(BottomDialog dialog, View v) {
+                                ImageView btnOk;
+                                btnOk = v.findViewById(R.id.btn_ok);
+                                btnOk.setOnClickListener(new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View v) {
+                                        dialog.dismiss();
+                                    }
+                                });
+                            }
+                        })
+                );
+            }
+        });
+
         btnFullScreenDialogLogin.setOnClickListener(new View.OnClickListener() {
-            
+
             /**
              * 采用异步加载布局防止卡顿测试
              */
-            
+
             OnBindView<FullScreenDialog> onBindView;
-            
+
             @Override
             public void onClick(View v) {
-                onBindView = new OnBindView<FullScreenDialog>(R.layout.layout_full_login) {
+                onBindView = new OnBindView<FullScreenDialog>(R.layout.layout_full_login, true) {
                     @Override
                     public void onBind(FullScreenDialog dialog, View v) {
                         btnCancel = v.findViewById(R.id.btn_cancel);
@@ -735,96 +902,172 @@ public class MainActivity extends BaseActivity {
                         editUserName = v.findViewById(R.id.edit_userName);
                         boxPassword = v.findViewById(R.id.box_password);
                         editPassword = v.findViewById(R.id.edit_password);
-                        
+                        btnLicense = v.findViewById(R.id.btn_license);
+
                         initFullScreenLoginDemo(dialog);
                     }
                 };
                 FullScreenDialog.show(onBindView);
             }
         });
-        
+
         btnFullScreenDialogWebPage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                FullScreenDialog.show(new OnBindView<FullScreenDialog>(R.layout.layout_full_webview) {
-                    @Override
-                    public void onBind(final FullScreenDialog dialog, View v) {
-                        btnClose = v.findViewById(R.id.btn_close);
-                        webView = v.findViewById(R.id.webView);
-                        
-                        btnClose.setOnClickListener(new View.OnClickListener() {
+                FullScreenDialog.build(new OnBindView<FullScreenDialog>(R.layout.layout_full_webview) {
                             @Override
-                            public void onClick(View v) {
-                                dialog.dismiss();
+                            public void onBind(final FullScreenDialog dialog, View v) {
+                                btnClose = v.findViewById(R.id.btn_close);
+                                webView = v.findViewById(R.id.webView);
+
+                                btnClose.setOnClickListener(new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View v) {
+                                        dialog.dismiss();
+                                    }
+                                });
+
+                                WebSettings webSettings = webView.getSettings();
+                                webSettings.setJavaScriptEnabled(true);
+                                webSettings.setLoadWithOverviewMode(true);
+                                webSettings.setUseWideViewPort(true);
+                                webSettings.setSupportZoom(false);
+                                webSettings.setAllowFileAccess(true);
+                                webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+                                webSettings.setLoadsImagesAutomatically(true);
+                                webSettings.setDefaultTextEncodingName("utf-8");
+
+                                webView.setWebViewClient(new WebViewClient() {
+                                    @Override
+                                    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                                        try {
+                                            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                                            startActivity(intent);
+                                        } catch (ActivityNotFoundException e) {
+                                            e.printStackTrace();
+                                        }
+                                        return true;
+                                    }
+
+                                    @Override
+                                    public void onPageFinished(WebView view, String url) {
+                                        super.onPageFinished(view, url);
+                                    }
+                                });
+
+                                webView.loadUrl("https://github.com/kongzue/DialogX");
                             }
-                        });
-                        
-                        WebSettings webSettings = webView.getSettings();
-                        webSettings.setJavaScriptEnabled(true);
-                        webSettings.setLoadWithOverviewMode(true);
-                        webSettings.setUseWideViewPort(true);
-                        webSettings.setSupportZoom(false);
-                        webSettings.setAllowFileAccess(true);
-                        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
-                        webSettings.setLoadsImagesAutomatically(true);
-                        webSettings.setDefaultTextEncodingName("utf-8");
-                        
-                        webView.setWebViewClient(new WebViewClient() {
-                            @Override
-                            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                                try {
-                                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                                    startActivity(intent);
-                                } catch (ActivityNotFoundException e) {
-                                    e.printStackTrace();
-                                }
-                                return true;
-                            }
-                            
-                            @Override
-                            public void onPageFinished(WebView view, String url) {
-                                super.onPageFinished(view, url);
-                            }
-                        });
-                        
-                        webView.loadUrl("https://www.kongzue.com/");
-                    }
-                });
+                        })
+                        .show();
             }
         });
-        
+
         btnCustomDialog.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 CustomDialog.show(new OnBindView<CustomDialog>(R.layout.layout_custom_dialog) {
-                    @Override
-                    public void onBind(final CustomDialog dialog, View v) {
-                        ImageView btnOk;
-                        btnOk = v.findViewById(R.id.btn_ok);
-                        btnOk.setOnClickListener(new View.OnClickListener() {
                             @Override
-                            public void onClick(View v) {
-                                dialog.dismiss();
+                            public void onBind(final CustomDialog dialog, View v) {
+                                ImageView btnOk;
+                                btnOk = v.findViewById(R.id.btn_ok);
+                                btnOk.setOnClickListener(new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View v) {
+                                        dialog.dismiss();
+                                    }
+                                });
                             }
-                        });
-                    }
-                })
-                        .setMaskColor(getResources().getColor(R.color.black30));
+                        })
+                        .setMaskColor(getResources().getColor(R.color.black30))
+                //实现完全自定义动画效果
+//                        .setDialogXAnimImpl(new DialogXAnimInterface<CustomDialog>() {
+//                            @Override
+//                            public void doShowAnim(CustomDialog customDialog, ObjectRunnable<Float> animProgress) {
+//                                Animation enterAnim;
+//
+//                                int enterAnimResId = com.kongzue.dialogx.R.anim.anim_dialogx_top_enter;
+//                                enterAnim = AnimationUtils.loadAnimation(me, enterAnimResId);
+//                                enterAnim.setInterpolator(new DecelerateInterpolator(2f));
+//
+//                                long enterAnimDurationTemp = enterAnim.getDuration();
+//
+//                                enterAnim.setDuration(enterAnimDurationTemp);
+//                                customDialog.getDialogImpl().boxCustom.startAnimation(enterAnim);
+//
+//                                ValueAnimator bkgAlpha = ValueAnimator.ofFloat(0f, 1f);
+//                                bkgAlpha.setDuration(enterAnimDurationTemp);
+//                                bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+//                                    @Override
+//                                    public void onAnimationUpdate(ValueAnimator animation) {
+//                                        animProgress.run((Float) animation.getAnimatedValue());
+//                                    }
+//                                });
+//                                bkgAlpha.start();
+//                            }
+//
+//                            @Override
+//                            public void doExitAnim(CustomDialog customDialog, ObjectRunnable<Float> animProgress) {
+//                                int exitAnimResIdTemp = com.kongzue.dialogx.R.anim.anim_dialogx_default_exit;
+//
+//                                Animation exitAnim = AnimationUtils.loadAnimation(me, exitAnimResIdTemp);
+//                                customDialog.getDialogImpl().boxCustom.startAnimation(exitAnim);
+//
+//                                ValueAnimator bkgAlpha = ValueAnimator.ofFloat(1f, 0f);
+//                                bkgAlpha.setDuration(exitAnim.getDuration());
+//                                bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+//                                    @Override
+//                                    public void onAnimationUpdate(ValueAnimator animation) {
+//                                        animProgress.run((Float) animation.getAnimatedValue());
+//                                    }
+//                                });
+//                                bkgAlpha.start();
+//                            }
+//                        })
+                ;
             }
         });
-        
+
+        btnCustomDialogAlign.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                CustomDialog.show(new OnBindView<CustomDialog>(R.layout.layout_custom_dialog_align) {
+
+                            private TextView btnSelectPositive;
+
+                            @Override
+                            public void onBind(final CustomDialog dialog, View v) {
+                                btnSelectPositive = v.findViewById(R.id.btn_selectPositive);
+                                btnSelectPositive.setOnClickListener(new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View v) {
+                                        PopTip.show("我知道了");
+                                        dialog.dismiss();
+                                    }
+                                });
+                            }
+                        })
+                        .setCancelable(false)
+                        .setMaskColor(getResources().getColor(R.color.black30))
+                        .setEnterAnimResId(R.anim.anim_custom_pop_enter)
+                        .setExitAnimResId(R.anim.anim_custom_pop_exit)
+                        .setAlignBaseViewGravity(btnCustomDialogAlign, Gravity.TOP | Gravity.CENTER_HORIZONTAL)
+                        .setBaseViewMarginBottom(-dip2px(45))
+                        .show();
+            }
+        });
+
         btnPoptip.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 PopTip.show("这是一个提示");
             }
         });
-        
+
         btnPoptipBigMessage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (rdoIos.isChecked()) {
-                    PopTip.show(R.mipmap.img_air_pods_pro, "AirPods Pro 已连接").setAutoTintIconInLightOrDarkMode(false).showLong();
+                    PopTip.show(R.mipmap.img_air_pods_pro, "AirPods Pro 已连接").setTintIcon(false).showLong();
                 } else {
                     PopTip.show(R.mipmap.img_mail_line_white, "邮件已发送", "撤回").setButton(new OnDialogButtonClickListener<PopTip>() {
                         @Override
@@ -833,11 +1076,37 @@ public class MainActivity extends BaseActivity {
                             toast("邮件已撤回");
                             return false;
                         }
-                    }).showLong();
+                    }).setTintIcon(true).showLong();
                 }
             }
         });
-        
+
+        btnPoptipSuccess.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                PopTip.show("操作已完成").iconSuccess();
+            }
+        });
+
+        btnPoptipWarning.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                PopTip.show("存储空间不足").setButton("立即清理", new OnDialogButtonClickListener<PopTip>() {
+                    @Override
+                    public boolean onClick(PopTip baseDialog, View v) {
+                        return false;
+                    }
+                }).iconWarning();
+            }
+        });
+
+        btnPoptipError.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                PopTip.show("无法连接网络").iconError();
+            }
+        });
+
         btnBottomSelectMenu.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -860,7 +1129,7 @@ public class MainActivity extends BaseActivity {
                         .setSelection(selectMenuIndex);
             }
         });
-        
+
         btnBottomMultiSelectMenu.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -887,7 +1156,7 @@ public class MainActivity extends BaseActivity {
                         .setSelection(selectMenuIndexArray);
             }
         });
-        
+
         btnBottomCustomRecycleView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -895,33 +1164,115 @@ public class MainActivity extends BaseActivity {
                         .setCustomView(new OnBindView<BottomDialog>(R.layout.layout_custom_recycleview) {
                             @Override
                             public void onBind(BottomDialog dialog, View v) {
-                                List<CustomRecycleViewAdapter.Data> fruitList = new ArrayList<>();
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 1"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 2"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 3"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 4"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 5"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 6"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 7"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 8"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 9"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 10"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 11"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 12"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 13"));
-                                fruitList.add(new CustomRecycleViewAdapter.Data("Item Text 14"));
+                                List<CustomRecycleViewAdapter.Data> dataArrayList = new ArrayList<>();
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 1"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 2"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 3"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 4"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 5"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 6"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 7"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 8"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 9"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 10"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 11"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 12"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 13"));
+                                dataArrayList.add(new CustomRecycleViewAdapter.Data("Item Text 14"));
                                 RecyclerView recyclerView = (RecyclerView) v;
                                 LinearLayoutManager layoutManager = new LinearLayoutManager(me);
                                 recyclerView.setLayoutManager(layoutManager);
-                                CustomRecycleViewAdapter adapter = new CustomRecycleViewAdapter(fruitList);
+                                CustomRecycleViewAdapter adapter = new CustomRecycleViewAdapter(dataArrayList);
+                                adapter.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                    @Override
+                                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                                        PopTip.show("点击了第 " + position + " 个");
+                                    }
+                                });
                                 recyclerView.setAdapter(adapter);
                             }
                         })
                         .show();
             }
         });
+
+        btnPopnotification.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                notificationIndex++;
+                PopNotification.show("这是一条消息 " + notificationIndex).showLong();
+            }
+        });
+
+        btnPopnotificationBigMessage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Bitmap icon = BitmapFactory.decodeResource(getResources(), R.mipmap.img_demo_avatar);
+                notificationIndex++;
+                PopNotification.show("这是一条消息 " + notificationIndex, "吃了没？\uD83E\uDD6A")
+                        .setIcon(icon)
+                        .setButton("回复", new OnDialogButtonClickListener<PopNotification>() {
+                            @Override
+                            public boolean onClick(PopNotification baseDialog, View v) {
+                                PopTip.show("点击回复按钮");
+                                return false;
+                            }
+                        })
+                        .showLong();
+            }
+        });
+
+        btnPopnotificationOverlay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                DialogX.globalHoverWindow = true;
+                //悬浮窗权限检查
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (!Settings.canDrawOverlays(me)) {
+                        Toast.makeText(me, "使用 DialogX.globalHoverWindow 必须开启悬浮窗权限", Toast.LENGTH_LONG).show();
+                        Intent intent = new Intent();
+                        intent.setAction(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                        startActivity(intent);
+                        return;
+                    }
+                }
+
+                Bitmap icon = BitmapFactory.decodeResource(getResources(), R.mipmap.img_demo_avatar);
+                notificationIndex++;
+                Toast.makeText(me, "会在1秒后显示悬浮窗！", Toast.LENGTH_LONG).show();
+
+                //跳转到桌面
+                Intent intent = new Intent(Intent.ACTION_MAIN);
+                intent.addCategory(Intent.CATEGORY_HOME);
+                intent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+
+                //等待一秒后显示
+                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        PopNotification.build()
+                                .setDialogImplMode(DialogX.IMPL_MODE.WINDOW)
+                                .setTitle("这是一条消息 " + notificationIndex)
+                                .setIcon(icon)
+                                .setButton("回复", new OnDialogButtonClickListener<PopNotification>() {
+                                    @Override
+                                    public boolean onClick(PopNotification baseDialog, View v) {
+                                        Intent intent = new Intent(me, MainActivity.class);
+                                        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                                        startActivity(intent);
+                                        return false;
+                                    }
+                                })
+                                .showLong();
+                    }
+                }, 1000);
+            }
+        });
     }
-    
+
+    int notificationIndex;
+
     private void initFullScreenLoginDemo(final FullScreenDialog fullScreenDialog) {
         btnCancel.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -929,9 +1280,17 @@ public class MainActivity extends BaseActivity {
                 fullScreenDialog.dismiss();
             }
         });
-        
+
         btnCancel.setText("取消");
         btnSubmit.setText("下一步");
+
+        btnLicense.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                PopTip.show("点击用户服务条款");
+            }
+        });
+
         btnSubmit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -940,29 +1299,29 @@ public class MainActivity extends BaseActivity {
                     TipDialog.show("请输入账号", TipDialog.TYPE.WARNING);
                     return;
                 }
-                
+
                 boxUserName.animate().x(-getDisplayWidth()).setDuration(300);
                 boxPassword.setX(getDisplayWidth());
                 boxPassword.setVisibility(View.VISIBLE);
                 boxPassword.animate().x(0).setDuration(300);
-                
+
                 editPassword.setFocusable(true);
                 editPassword.requestFocus();
-                
+
                 btnCancel.setText("上一步");
                 btnCancel.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         boxUserName.animate().x(0).setDuration(300);
                         boxPassword.animate().x(getDisplayWidth()).setDuration(300);
-                        
+
                         editUserName.setFocusable(true);
                         editUserName.requestFocus();
-                        
+
                         initFullScreenLoginDemo(fullScreenDialog);
                     }
                 });
-                
+
                 btnSubmit.setText("登录");
                 btnSubmit.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -989,13 +1348,13 @@ public class MainActivity extends BaseActivity {
             }
         });
     }
-    
+
     @Override
     public void onBackPressed() {
         log("#MainActivity.onBackPressed");
         super.onBackPressed();
     }
-    
+
     public void showIME(EditText editText) {
         if (editText == null) {
             return;
@@ -1005,13 +1364,14 @@ public class MainActivity extends BaseActivity {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.showSoftInput(editText, InputMethodManager.RESULT_UNCHANGED_SHOWN);
     }
-    
+
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         refreshUIMode();
+
     }
-    
+
     /**
      * 刷新亮暗色模式界面变化
      */

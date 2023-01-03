@@ -1,29 +1,39 @@
 package com.kongzue.dialogx.dialogs;
 
+import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.content.res.Configuration;
+import android.graphics.Outline;
 import android.graphics.Rect;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.RelativeLayout;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.ColorRes;
+import androidx.lifecycle.Lifecycle;
 
 import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.R;
 import com.kongzue.dialogx.interfaces.BaseDialog;
 import com.kongzue.dialogx.interfaces.DialogConvertViewInterface;
 import com.kongzue.dialogx.interfaces.DialogLifecycleCallback;
+import com.kongzue.dialogx.interfaces.DialogXAnimInterface;
 import com.kongzue.dialogx.interfaces.DialogXStyle;
 import com.kongzue.dialogx.interfaces.OnBackPressedListener;
+import com.kongzue.dialogx.interfaces.OnBackgroundMaskClickListener;
 import com.kongzue.dialogx.interfaces.OnBindView;
 import com.kongzue.dialogx.interfaces.OnSafeInsetsChangeListener;
+import com.kongzue.dialogx.interfaces.ScrollController;
 import com.kongzue.dialogx.util.FullScreenDialogTouchEventInterceptor;
+import com.kongzue.dialogx.util.ObjectRunnable;
 import com.kongzue.dialogx.util.views.ActivityScreenShotImageView;
 import com.kongzue.dialogx.util.views.DialogXBaseRelativeLayout;
 import com.kongzue.dialogx.util.views.MaxRelativeLayout;
@@ -42,10 +52,15 @@ public class FullScreenDialog extends BaseDialog {
     public static BOOLEAN overrideCancelable;
     
     protected OnBindView<FullScreenDialog> onBindView;
+    protected OnBackPressedListener<FullScreenDialog> onBackPressedListener;
     protected BOOLEAN privateCancelable;
     protected boolean hideZoomBackground;
+    protected float backgroundRadius = -1;
+    protected boolean allowInterceptTouch = true;
+    protected DialogXAnimInterface<FullScreenDialog> dialogXAnimImpl;
     
     protected DialogLifecycleCallback<FullScreenDialog> dialogLifecycleCallback;
+    protected OnBackgroundMaskClickListener<FullScreenDialog> onBackgroundMaskClickListener;
     
     protected FullScreenDialog me = this;
     
@@ -73,7 +88,16 @@ public class FullScreenDialog extends BaseDialog {
         return fullScreenDialog;
     }
     
-    public void show() {
+    public FullScreenDialog show() {
+        if (isHide && getDialogView() != null && isShow) {
+            if (hideWithExitAnim && getDialogImpl() != null) {
+                getDialogView().setVisibility(View.VISIBLE);
+                getDialogImpl().getDialogXAnimImpl().doShowAnim(me, null);
+            } else {
+                getDialogView().setVisibility(View.VISIBLE);
+            }
+            return this;
+        }
         super.beforeShow();
         if (getDialogView() == null) {
             dialogView = createView(isLightTheme() ? R.layout.layout_dialogx_fullscreen : R.layout.layout_dialogx_fullscreen_dark);
@@ -81,6 +105,7 @@ public class FullScreenDialog extends BaseDialog {
             if (dialogView != null) dialogView.setTag(me);
         }
         show(dialogView);
+        return this;
     }
     
     public void show(Activity activity) {
@@ -104,6 +129,12 @@ public class FullScreenDialog extends BaseDialog {
         public RelativeLayout boxBkg;
         public MaxRelativeLayout bkg;
         public RelativeLayout boxCustom;
+        public ScrollController scrollView;
+        
+        public DialogImpl setScrollView(ScrollController scrollView) {
+            this.scrollView = scrollView;
+            return this;
+        }
         
         public DialogImpl(View convertView) {
             if (convertView == null) return;
@@ -135,6 +166,10 @@ public class FullScreenDialog extends BaseDialog {
                 @Override
                 public void onShow() {
                     isShow = true;
+                    preShow = false;
+                    
+                    lifecycle.setCurrentState(Lifecycle.State.CREATED);
+                    onDialogShow();
                     
                     getDialogLifecycleCallback().onShow(me);
                 }
@@ -146,21 +181,24 @@ public class FullScreenDialog extends BaseDialog {
                     fullScreenDialogTouchEventInterceptor = null;
                     dialogImpl = null;
                     dialogLifecycleCallback = null;
+                    lifecycle.setCurrentState(Lifecycle.State.DESTROYED);
                     System.gc();
                 }
             });
             
-            boxRoot.setOnBackPressedListener(new OnBackPressedListener() {
+            boxRoot.setOnBackPressedListener(new DialogXBaseRelativeLayout.PrivateBackPressedListener() {
                 @Override
                 public boolean onBackPressed() {
-                    if (onBackPressedListener != null && onBackPressedListener.onBackPressed()) {
-                        dismiss();
-                        return false;
+                    if (onBackPressedListener != null) {
+                        if (onBackPressedListener.onBackPressed(me)) {
+                            dismiss();
+                        }
+                    } else {
+                        if (isCancelable()) {
+                            dismiss();
+                        }
                     }
-                    if (isCancelable()) {
-                        dismiss();
-                    }
-                    return false;
+                    return true;
                 }
             });
             
@@ -179,14 +217,8 @@ public class FullScreenDialog extends BaseDialog {
             boxRoot.post(new Runnable() {
                 @Override
                 public void run() {
-                    int customViewHeight = boxCustom.getHeight();
-                    if (customViewHeight == 0) {
-                        //实测在 Android 10 中，离屏情况下 View可能无法得到正确高度（恒 0），此时直接按照全屏高度处理
-                        //其他版本 Android 未发现此问题
-                        showEnterAnim((int) boxRoot.getSafeHeight());
-                    } else {
-                        showEnterAnim(customViewHeight);
-                    }
+                    getDialogXAnimImpl().doShowAnim(me, null);
+                    lifecycle.setCurrentState(Lifecycle.State.RESUMED);
                 }
             });
             
@@ -214,6 +246,8 @@ public class FullScreenDialog extends BaseDialog {
                     }
                 }
             });
+            
+            onDialogInit();
         }
         
         private void showEnterAnim(int customViewHeight) {
@@ -240,25 +274,57 @@ public class FullScreenDialog extends BaseDialog {
         
         @Override
         public void refreshView() {
+            if (boxRoot == null || getTopActivity() == null) {
+                return;
+            }
+            boxRoot.setRootPadding(screenPaddings[0],screenPaddings[1],screenPaddings[2],screenPaddings[3]);
             if (backgroundColor != -1) {
                 tintColor(bkg, backgroundColor);
             }
             
             bkg.setMaxWidth(getMaxWidth());
+            bkg.setMaxHeight(getMaxHeight());
+            bkg.setMinimumWidth(getMinWidth());
+            bkg.setMinimumHeight(getMinHeight());
             
             if (isCancelable()) {
                 boxRoot.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        doDismiss(v);
+                        if (onBackgroundMaskClickListener == null || !onBackgroundMaskClickListener.onClick(me, v)) {
+                            doDismiss(v);
+                        }
                     }
                 });
             } else {
                 boxRoot.setOnClickListener(null);
             }
+            if (backgroundRadius > -1) {
+                GradientDrawable gradientDrawable = (GradientDrawable) bkg.getBackground();
+                if (gradientDrawable != null) gradientDrawable.setCornerRadii(new float[]{
+                        backgroundRadius, backgroundRadius, backgroundRadius, backgroundRadius, 0, 0, 0, 0
+                });
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                    bkg.setOutlineProvider(new ViewOutlineProvider() {
+                        @Override
+                        public void getOutline(View view, Outline outline) {
+                            outline.setRoundRect(0, 0, view.getWidth(), (int) (view.getHeight() + backgroundRadius), backgroundRadius);
+                        }
+                    });
+                    bkg.setClipToOutline(true);
+                }
+            }
             
             if (onBindView != null) {
                 onBindView.bindParent(boxCustom, me);
+                if (onBindView.getCustomView() instanceof ScrollController) {
+                    scrollView = (ScrollController) onBindView.getCustomView();
+                } else {
+                    View scrollController = onBindView.getCustomView().findViewWithTag("ScrollController");
+                    if (scrollController instanceof ScrollController) {
+                        scrollView = (ScrollController) scrollController;
+                    }
+                }
             }
             
             if (hideZoomBackground) {
@@ -270,47 +336,31 @@ public class FullScreenDialog extends BaseDialog {
             }
             
             fullScreenDialogTouchEventInterceptor.refresh(me, this);
+            
+            onDialogRefreshUI();
         }
         
         @Override
         public void doDismiss(View v) {
             if (v != null) v.setEnabled(false);
-            if (getContext() == null) return;
-    
+            if (getTopActivity() == null) return;
+            
             if (!dismissAnimFlag) {
                 dismissAnimFlag = true;
-                long exitAnimDurationTemp = 300;
-                if (overrideExitDuration >= 0) {
-                    exitAnimDurationTemp = overrideExitDuration;
-                }
-                if (exitAnimDuration >= 0) {
-                    exitAnimDurationTemp = exitAnimDuration;
-                }
-    
-                ObjectAnimator exitAnim = ObjectAnimator.ofFloat(bkg, "y", bkg.getY(), boxBkg.getHeight());
-                exitAnim.setDuration(exitAnimDurationTemp);
-                exitAnim.start();
-    
-                ValueAnimator bkgAlpha = ValueAnimator.ofFloat(1f, 0f);
-                bkgAlpha.setDuration(exitAnimDurationTemp);
-                bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                getDialogXAnimImpl().doExitAnim(me, new ObjectRunnable<Float>() {
                     @Override
-                    public void onAnimationUpdate(ValueAnimator animation) {
+                    public void run(Float value) {
                         if (boxRoot != null) {
-                            float value = (float) animation.getAnimatedValue();
                             boxRoot.setBkgAlpha(value);
-                            if (value == 0) boxRoot.setVisibility(View.GONE);
+                        }
+                        if (value == 0) {
+                            if (boxRoot != null) {
+                                boxRoot.setVisibility(View.GONE);
+                            }
+                            dismiss(dialogView);
                         }
                     }
                 });
-                bkgAlpha.start();
-    
-                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        dismiss(dialogView);
-                    }
-                }, exitAnimDurationTemp);
             }
         }
         
@@ -331,6 +381,60 @@ public class FullScreenDialog extends BaseDialog {
                 exitAnim.start();
             }
         }
+        
+        protected DialogXAnimInterface<FullScreenDialog> getDialogXAnimImpl() {
+            if (dialogXAnimImpl == null) {
+                dialogXAnimImpl = new DialogXAnimInterface<FullScreenDialog>() {
+                    @Override
+                    public void doShowAnim(FullScreenDialog dialog, ObjectRunnable<Float> animProgress) {
+                        int customViewHeight = boxCustom.getHeight();
+                        if (customViewHeight == 0 || isMatchParentHeightCustomView()) {
+                            //实测在 Android 10 中，离屏情况下 View可能无法得到正确高度（恒 0），此时直接按照全屏高度处理
+                            //其他版本 Android 未发现此问题
+                            showEnterAnim((int) boxRoot.getSafeHeight());
+                        } else {
+                            showEnterAnim(customViewHeight);
+                        }
+                    }
+                    
+                    private boolean isMatchParentHeightCustomView() {
+                        if (onBindView != null && onBindView.getCustomView() != null) {
+                            ViewGroup.LayoutParams lp = onBindView.getCustomView().getLayoutParams();
+                            if (lp != null) {
+                                return lp.height == MATCH_PARENT;
+                            }
+                        }
+                        return false;
+                    }
+                    
+                    @Override
+                    public void doExitAnim(FullScreenDialog dialog, ObjectRunnable<Float> animProgress) {
+                        long exitAnimDurationTemp = 300;
+                        if (overrideExitDuration >= 0) {
+                            exitAnimDurationTemp = overrideExitDuration;
+                        }
+                        if (exitAnimDuration >= 0) {
+                            exitAnimDurationTemp = exitAnimDuration;
+                        }
+                        
+                        ObjectAnimator exitAnim = ObjectAnimator.ofFloat(bkg, "y", bkg.getY(), boxBkg.getHeight());
+                        exitAnim.setDuration(exitAnimDurationTemp);
+                        exitAnim.start();
+                        
+                        ValueAnimator bkgAlpha = ValueAnimator.ofFloat(1f, 0f);
+                        bkgAlpha.setDuration(exitAnimDurationTemp);
+                        bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                            @Override
+                            public void onAnimationUpdate(ValueAnimator animation) {
+                                animProgress.run((Float) animation.getAnimatedValue());
+                            }
+                        });
+                        bkgAlpha.start();
+                    }
+                };
+            }
+            return dialogXAnimImpl;
+        }
     }
     
     @Override
@@ -349,8 +453,13 @@ public class FullScreenDialog extends BaseDialog {
     }
     
     public void dismiss() {
-        if (dialogImpl == null) return;
-        dialogImpl.doDismiss(null);
+        runOnMain(new Runnable() {
+            @Override
+            public void run() {
+                if (dialogImpl == null) return;
+                dialogImpl.doDismiss(null);
+            }
+        });
     }
     
     public DialogLifecycleCallback<FullScreenDialog> getDialogLifecycleCallback() {
@@ -364,11 +473,11 @@ public class FullScreenDialog extends BaseDialog {
         return this;
     }
     
-    public OnBackPressedListener getOnBackPressedListener() {
-        return onBackPressedListener;
+    public OnBackPressedListener<FullScreenDialog> getOnBackPressedListener() {
+        return (OnBackPressedListener<FullScreenDialog>) onBackPressedListener;
     }
     
-    public FullScreenDialog setOnBackPressedListener(OnBackPressedListener onBackPressedListener) {
+    public FullScreenDialog setOnBackPressedListener(OnBackPressedListener<FullScreenDialog> onBackPressedListener) {
         this.onBackPressedListener = onBackPressedListener;
         refreshUI();
         return this;
@@ -481,9 +590,31 @@ public class FullScreenDialog extends BaseDialog {
         show(dialogView);
     }
     
+    private boolean isHide;
+    
     public void hide() {
+        isHide = true;
+        hideWithExitAnim = false;
         if (getDialogView() != null) {
             getDialogView().setVisibility(View.GONE);
+        }
+    }
+    
+    protected boolean hideWithExitAnim;
+    
+    public void hideWithExitAnim() {
+        hideWithExitAnim = true;
+        isHide = true;
+        if (getDialogImpl() != null) {
+            getDialogImpl().getDialogXAnimImpl().doExitAnim(me, new ObjectRunnable<Float>() {
+                @Override
+                public void run(Float value) {
+                    getDialogImpl().boxRoot.setBkgAlpha(value);
+                    if (value == 0 && getDialogView() != null) {
+                        getDialogView().setVisibility(View.GONE);
+                    }
+                }
+            });
         }
     }
     
@@ -498,8 +629,76 @@ public class FullScreenDialog extends BaseDialog {
         return this;
     }
     
+    public FullScreenDialog setMaxHeight(int maxHeight) {
+        this.maxHeight = maxHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public FullScreenDialog setMinHeight(int minHeight) {
+        this.minHeight = minHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public FullScreenDialog setMinWidth(int minWidth) {
+        this.minWidth = minWidth;
+        refreshUI();
+        return this;
+    }
+    
     public FullScreenDialog setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
         this.dialogImplMode = dialogImplMode;
+        return this;
+    }
+    
+    public OnBackgroundMaskClickListener<FullScreenDialog> getOnBackgroundMaskClickListener() {
+        return onBackgroundMaskClickListener;
+    }
+    
+    public FullScreenDialog setOnBackgroundMaskClickListener(OnBackgroundMaskClickListener<FullScreenDialog> onBackgroundMaskClickListener) {
+        this.onBackgroundMaskClickListener = onBackgroundMaskClickListener;
+        return this;
+    }
+    
+    public FullScreenDialog setRadius(float radiusPx) {
+        backgroundRadius = radiusPx;
+        refreshUI();
+        return this;
+    }
+    
+    public float getRadius() {
+        return backgroundRadius;
+    }
+    
+    public boolean isAllowInterceptTouch() {
+        return allowInterceptTouch;
+    }
+    
+    public FullScreenDialog setAllowInterceptTouch(boolean allowInterceptTouch) {
+        this.allowInterceptTouch = allowInterceptTouch;
+        refreshUI();
+        return this;
+    }
+    
+    public DialogXAnimInterface<FullScreenDialog> getDialogXAnimImpl() {
+        return dialogXAnimImpl;
+    }
+    
+    public FullScreenDialog setDialogXAnimImpl(DialogXAnimInterface<FullScreenDialog> dialogXAnimImpl) {
+        this.dialogXAnimImpl = dialogXAnimImpl;
+        return this;
+    }
+    
+    public FullScreenDialog setRootPadding(int padding) {
+        this.screenPaddings = new int[]{padding, padding, padding, padding};
+        refreshUI();
+        return this;
+    }
+    
+    public FullScreenDialog setRootPadding(int paddingLeft, int paddingTop, int paddingRight, int paddingBottom) {
+        this.screenPaddings = new int[]{paddingLeft, paddingTop, paddingRight, paddingBottom};
+        refreshUI();
         return this;
     }
 }

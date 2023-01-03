@@ -14,6 +14,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
@@ -59,11 +60,6 @@ public class ProgressView extends View implements ProgressViewInterface {
     
     public ProgressView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        init(attrs);
-    }
-    
-    public ProgressView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        super(context, attrs, defStyleAttr, defStyleRes);
         init(attrs);
     }
     
@@ -203,11 +199,20 @@ public class ProgressView extends View implements ProgressViewInterface {
     }
     
     private Bitmap getLoadingBitmap() {
-        Bitmap origin = BitmapFactory.decodeResource(getResources(), isLightMode ? R.mipmap.img_progress_ios_dark : R.mipmap.img_progress_ios_light);
+        Bitmap origin = BitmapFactory.decodeResource(getResources(), isLightMode ? R.mipmap.img_progress_ios_light : R.mipmap.img_progress_ios_dark);
         Matrix matrix = new Matrix();
         matrix.setRotate(45 * ((int) currentRotateDegrees));
         Bitmap rotatedBitmap = Bitmap.createBitmap(origin, 0, 0, origin.getWidth(), origin.getHeight(), matrix, false);
-        return Bitmap.createBitmap(rotatedBitmap, rotatedBitmap.getWidth() / 2 - origin.getWidth() / 2, rotatedBitmap.getHeight() / 2 - origin.getHeight() / 2, origin.getWidth(), origin.getHeight(), null, false);
+        int x = rotatedBitmap.getWidth() / 2 - origin.getWidth() / 2;
+        int y = rotatedBitmap.getHeight() / 2 - origin.getHeight() / 2;
+        int w = origin.getWidth();
+        int h = origin.getHeight();
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+        if (x + w > rotatedBitmap.getWidth()) w = rotatedBitmap.getWidth() - x;
+        if (y + h > rotatedBitmap.getHeight()) h = rotatedBitmap.getHeight() - y;
+        
+        return Bitmap.createBitmap(rotatedBitmap, x, y, w, h, null, false);
     }
     
     private void drawDoneMark(int status, Canvas canvas) {
@@ -216,7 +221,7 @@ public class ProgressView extends View implements ProgressViewInterface {
         }
         if (tickShowRunnable != null) {
             tickShowRunnable.run();
-            if (DialogX.useHaptic)performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+            if (DialogX.useHaptic) performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
             tickShowRunnable = null;
         }
         switch (status) {
@@ -368,6 +373,8 @@ public class ProgressView extends View implements ProgressViewInterface {
         if (status != STATUS_PROGRESSING) {
             currentRotateDegrees = 0;
         }
+        noShowLoading = false;
+        status = STATUS_PROGRESSING;
         rotateAnimator = ValueAnimator.ofFloat(currentRotateDegrees, 365 * progress);
         rotateAnimator.setDuration(1000);
         rotateAnimator.setInterpolator(new DecelerateInterpolator(2));
@@ -380,7 +387,6 @@ public class ProgressView extends View implements ProgressViewInterface {
             }
         });
         rotateAnimator.start();
-        status = STATUS_PROGRESSING;
     }
     
     private Runnable tickShowRunnable;

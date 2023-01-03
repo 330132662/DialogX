@@ -5,7 +5,9 @@ import android.content.res.Resources;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.dialogs.FullScreenDialog;
+import com.kongzue.dialogx.interfaces.ScrollController;
 
 /**
  * @author: Kongzue
@@ -35,58 +37,90 @@ public class FullScreenDialogTouchEventInterceptor {
         if (me == null || impl == null || impl.bkg == null) {
             return;
         }
-        
-        impl.boxCustom.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        bkgTouchDownY = event.getY();
-                        isBkgTouched = true;
-                        bkgOldY = impl.bkg.getY();
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        if (isBkgTouched) {
-                            float aimY = impl.bkg.getY() + event.getY() - bkgTouchDownY;
-                            if (aimY < 0) {
-                                aimY = 0;
-                            }
-                            impl.bkg.setY(aimY);
-                        }
-                        break;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        isBkgTouched = false;
-                        if (bkgOldY == 0) {
-                            if (impl.bkg.getY() < dip2px(35)) {
-                                ObjectAnimator enterAnim = ObjectAnimator.ofFloat(impl.bkg, "y", impl.bkg.getY(), 0);
-                                enterAnim.setDuration(300);
-                                enterAnim.start();
-                            } else if (impl.bkg.getY() > impl.bkgEnterAimY + dip2px(35)) {
-                                impl.preDismiss();
-                            } else {
-                                ObjectAnimator enterAnim = ObjectAnimator.ofFloat(impl.bkg, "y", impl.bkg.getY(), impl.bkgEnterAimY);
-                                enterAnim.setDuration(300);
-                                enterAnim.start();
-                            }
-                        } else {
-                            if (impl.bkg.getY() < bkgOldY - dip2px(35)) {
-                                ObjectAnimator enterAnim = ObjectAnimator.ofFloat(impl.bkg, "y", impl.bkg.getY(), 0);
-                                enterAnim.setDuration(300);
-                                enterAnim.start();
-                            } else if (impl.bkg.getY() > bkgOldY + dip2px(35)) {
-                                impl.preDismiss();
-                            } else {
-                                ObjectAnimator enterAnim = ObjectAnimator.ofFloat(impl.bkg, "y", impl.bkg.getY(), impl.bkgEnterAimY);
-                                enterAnim.setDuration(300);
-                                enterAnim.start();
-                            }
-                        }
-                        break;
-                }
-                return true;
+        if (me.isAllowInterceptTouch()) {
+            View touchView = impl.boxCustom;
+            if (impl.scrollView != null) {
+                touchView = impl.bkg;
             }
-        });
+            touchView.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            bkgTouchDownY = event.getY();
+                            isBkgTouched = true;
+                            bkgOldY = impl.bkg.getY();
+                            break;
+                        case MotionEvent.ACTION_MOVE:
+                            if (isBkgTouched) {
+                                float aimY = impl.bkg.getY() + event.getY() - bkgTouchDownY;
+                                if (impl.scrollView != null && impl.scrollView.isCanScroll()) {
+                                    if (aimY > 0) {
+                                        if (impl.scrollView.getScrollDistance() == 0) {
+                                            if (impl.scrollView instanceof ScrollController) {
+                                                ((ScrollController) impl.scrollView).lockScroll(true);
+                                            }
+                                            impl.bkg.setY(aimY);
+                                        } else {
+                                            bkgTouchDownY = event.getY();
+                                        }
+                                    } else {
+                                        if (impl.scrollView instanceof ScrollController) {
+                                            ((ScrollController) impl.scrollView).lockScroll(false);
+                                        }
+                                        impl.bkg.setY(0);
+                                    }
+                                } else {
+                                    if (aimY < 0) {
+                                        aimY = 0;
+                                    }
+                                    impl.bkg.setY(aimY);
+                                }
+                            }
+                            break;
+                        case MotionEvent.ACTION_UP:
+                        case MotionEvent.ACTION_CANCEL:
+                            isBkgTouched = false;
+                            if (bkgOldY == 0) {
+                                if (impl.bkg.getY() < DialogX.touchSlideTriggerThreshold) {
+                                    ObjectAnimator enterAnim = ObjectAnimator.ofFloat(impl.bkg, "y", impl.bkg.getY(), 0);
+                                    enterAnim.setDuration(300);
+                                    enterAnim.start();
+                                } else if (impl.bkg.getY() > impl.bkgEnterAimY + DialogX.touchSlideTriggerThreshold) {
+                                    impl.preDismiss();
+                                } else {
+                                    ObjectAnimator enterAnim = ObjectAnimator.ofFloat(impl.bkg, "y", impl.bkg.getY(), impl.bkgEnterAimY);
+                                    enterAnim.setDuration(300);
+                                    enterAnim.start();
+                                }
+                            } else {
+                                if (impl.bkg.getY() < bkgOldY - DialogX.touchSlideTriggerThreshold) {
+                                    ObjectAnimator enterAnim = ObjectAnimator.ofFloat(impl.bkg, "y", impl.bkg.getY(), 0);
+                                    enterAnim.setDuration(300);
+                                    enterAnim.start();
+                                } else if (impl.bkg.getY() > bkgOldY + DialogX.touchSlideTriggerThreshold) {
+                                    impl.preDismiss();
+                                } else {
+                                    ObjectAnimator enterAnim = ObjectAnimator.ofFloat(impl.bkg, "y", impl.bkg.getY(), impl.bkgEnterAimY);
+                                    enterAnim.setDuration(300);
+                                    enterAnim.start();
+                                }
+                            }
+                            break;
+                    }
+                    return false;
+                }
+            });
+        } else {
+            View touchView = impl.boxCustom;
+            if (impl.scrollView != null) {
+                touchView = impl.bkg;
+            }
+            if (impl.scrollView instanceof ScrollController) {
+                ((ScrollController) impl.scrollView).lockScroll(false);
+            }
+            touchView.setOnTouchListener(null);
+        }
     }
     
     private int dip2px(float dpValue) {

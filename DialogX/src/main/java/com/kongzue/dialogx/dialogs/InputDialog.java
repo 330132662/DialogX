@@ -1,6 +1,8 @@
 package com.kongzue.dialogx.dialogs;
 
-import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.view.View;
 
 import androidx.annotation.ColorInt;
@@ -8,9 +10,12 @@ import androidx.annotation.ColorRes;
 
 import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.R;
+import com.kongzue.dialogx.interfaces.DialogLifecycleCallback;
+import com.kongzue.dialogx.interfaces.DialogXAnimInterface;
+import com.kongzue.dialogx.interfaces.DialogXStyle;
 import com.kongzue.dialogx.interfaces.OnBackPressedListener;
+import com.kongzue.dialogx.interfaces.OnBackgroundMaskClickListener;
 import com.kongzue.dialogx.interfaces.OnBindView;
-import com.kongzue.dialogx.interfaces.OnInputDialogButtonClickListener;
 import com.kongzue.dialogx.interfaces.OnInputDialogButtonClickListener;
 import com.kongzue.dialogx.util.InputInfo;
 import com.kongzue.dialogx.util.TextInfo;
@@ -30,6 +35,12 @@ public class InputDialog extends MessageDialog {
     
     public static InputDialog build() {
         return new InputDialog();
+    }
+    
+    public static InputDialog build(DialogXStyle style) {
+        InputDialog dialog = new InputDialog();
+        dialog.setStyle(style);
+        return dialog;
     }
     
     public static InputDialog build(OnBindView<MessageDialog> onBindView) {
@@ -457,11 +468,11 @@ public class InputDialog extends MessageDialog {
         return this;
     }
     
-    public OnBackPressedListener getOnBackPressedListener() {
-        return onBackPressedListener;
+    public OnBackPressedListener<MessageDialog> getOnBackPressedListener() {
+        return (OnBackPressedListener<MessageDialog>) onBackPressedListener;
     }
     
-    public InputDialog setOnBackPressedListener(OnBackPressedListener onBackPressedListener) {
+    public InputDialog setOnBackPressedListener(OnBackPressedListener<MessageDialog> onBackPressedListener) {
         this.onBackPressedListener = onBackPressedListener;
         return this;
     }
@@ -538,7 +549,7 @@ public class InputDialog extends MessageDialog {
             dismiss(dialogView);
             isShow = false;
         }
-        if (getDialogImpl().boxCustom!=null){
+        if (getDialogImpl().boxCustom != null) {
             getDialogImpl().boxCustom.removeAllViews();
         }
         int layoutId = style.layout(isLightTheme());
@@ -548,7 +559,7 @@ public class InputDialog extends MessageDialog {
         enterAnimDuration = 0;
         dialogView = createView(layoutId);
         dialogImpl = new DialogImpl(dialogView);
-        if (dialogView!=null)dialogView.setTag(me);
+        if (dialogView != null) dialogView.setTag(me);
         show(dialogView);
         setInputText(inputText);
     }
@@ -575,8 +586,95 @@ public class InputDialog extends MessageDialog {
         return this;
     }
     
+    public InputDialog setMaxHeight(int maxHeight) {
+        this.maxHeight = maxHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public InputDialog setMinHeight(int minHeight) {
+        this.minHeight = minHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public InputDialog setMinWidth(int minWidth) {
+        this.minWidth = minWidth;
+        refreshUI();
+        return this;
+    }
+    
     public InputDialog setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
         this.dialogImplMode = dialogImplMode;
+        return this;
+    }
+    
+    public boolean isBkgInterceptTouch() {
+        return bkgInterceptTouch;
+    }
+    
+    public InputDialog setBkgInterceptTouch(boolean bkgInterceptTouch) {
+        this.bkgInterceptTouch = bkgInterceptTouch;
+        return this;
+    }
+    
+    public OnBackgroundMaskClickListener<MessageDialog> getOnBackgroundMaskClickListener() {
+        return onBackgroundMaskClickListener;
+    }
+    
+    public InputDialog setOnBackgroundMaskClickListener(OnBackgroundMaskClickListener<MessageDialog> onBackgroundMaskClickListener) {
+        this.onBackgroundMaskClickListener = onBackgroundMaskClickListener;
+        return this;
+    }
+    
+    public InputDialog setRadius(float radiusPx) {
+        backgroundRadius = radiusPx;
+        refreshUI();
+        return this;
+    }
+    
+    public InputDialog setTitleIcon(Bitmap titleIcon) {
+        this.titleIcon = new BitmapDrawable(getResources(), titleIcon);
+        refreshUI();
+        return this;
+    }
+    
+    public InputDialog setTitleIcon(int titleIconResId) {
+        this.titleIcon = getResources().getDrawable(titleIconResId);
+        refreshUI();
+        return this;
+    }
+    
+    public InputDialog setTitleIcon(Drawable titleIcon) {
+        this.titleIcon = titleIcon;
+        refreshUI();
+        return this;
+    }
+    
+    public DialogXAnimInterface<MessageDialog> getDialogXAnimImpl() {
+        return dialogXAnimImpl;
+    }
+    
+    public InputDialog setDialogXAnimImpl(DialogXAnimInterface<MessageDialog> dialogXAnimImpl) {
+        this.dialogXAnimImpl = dialogXAnimImpl;
+        return this;
+    }
+    
+    public InputDialog setRootPadding(int padding) {
+        this.screenPaddings = new int[]{padding, padding, padding, padding};
+        refreshUI();
+        return this;
+    }
+    
+    public InputDialog setRootPadding(int paddingLeft, int paddingTop, int paddingRight, int paddingBottom) {
+        this.screenPaddings = new int[]{paddingLeft, paddingTop, paddingRight, paddingBottom};
+        refreshUI();
+        return this;
+    }
+    
+    public InputDialog setDialogLifecycleCallback(DialogLifecycleCallback<MessageDialog> dialogLifecycleCallback) {
+        this.dialogLifecycleCallback = dialogLifecycleCallback;
+        if (isShow) dialogLifecycleCallback.onShow(me);
         return this;
     }
 }

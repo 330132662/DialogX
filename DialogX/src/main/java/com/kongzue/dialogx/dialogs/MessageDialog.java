@@ -1,7 +1,18 @@
 package com.kongzue.dialogx.dialogs;
 
 import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.Outline;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputFilter;
@@ -9,6 +20,7 @@ import android.text.InputType;
 import android.text.method.LinkMovementMethod;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -21,6 +33,7 @@ import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.ColorRes;
+import androidx.lifecycle.Lifecycle;
 
 import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.R;
@@ -28,17 +41,22 @@ import com.kongzue.dialogx.interfaces.BaseDialog;
 import com.kongzue.dialogx.interfaces.BaseOnDialogClickCallback;
 import com.kongzue.dialogx.interfaces.DialogConvertViewInterface;
 import com.kongzue.dialogx.interfaces.DialogLifecycleCallback;
+import com.kongzue.dialogx.interfaces.DialogXAnimInterface;
 import com.kongzue.dialogx.interfaces.DialogXStyle;
 import com.kongzue.dialogx.interfaces.OnBackPressedListener;
+import com.kongzue.dialogx.interfaces.OnBackgroundMaskClickListener;
 import com.kongzue.dialogx.interfaces.OnBindView;
 import com.kongzue.dialogx.interfaces.OnDialogButtonClickListener;
 import com.kongzue.dialogx.interfaces.OnInputDialogButtonClickListener;
 import com.kongzue.dialogx.style.MaterialStyle;
+import com.kongzue.dialogx.util.ObjectRunnable;
 import com.kongzue.dialogx.util.views.BlurView;
 import com.kongzue.dialogx.util.views.DialogXBaseRelativeLayout;
 import com.kongzue.dialogx.util.InputInfo;
 import com.kongzue.dialogx.util.views.MaxRelativeLayout;
 import com.kongzue.dialogx.util.TextInfo;
+
+import java.lang.reflect.Field;
 
 /**
  * @author: Kongzue
@@ -54,13 +72,17 @@ public class MessageDialog extends BaseDialog {
     public static int overrideEnterAnimRes = 0;
     public static int overrideExitAnimRes = 0;
     public static BOOLEAN overrideCancelable;
+    protected boolean bkgInterceptTouch = true;
     protected OnBindView<MessageDialog> onBindView;
     protected MessageDialog me = this;
     protected BOOLEAN privateCancelable;
     protected int customEnterAnimResId;
     protected int customExitAnimResId;
+    protected DialogXAnimInterface<MessageDialog> dialogXAnimImpl;
+    protected OnBackPressedListener<MessageDialog> onBackPressedListener;
     
-    private DialogLifecycleCallback<MessageDialog> dialogLifecycleCallback;
+    protected DialogLifecycleCallback<MessageDialog> dialogLifecycleCallback;
+    protected OnBackgroundMaskClickListener<MessageDialog> onBackgroundMaskClickListener;
     
     protected MessageDialog() {
         super();
@@ -76,6 +98,8 @@ public class MessageDialog extends BaseDialog {
     protected String inputText;
     protected String inputHintText;
     protected int maskColor = -1;
+    protected float backgroundRadius = -1;
+    protected Drawable titleIcon;
     
     protected TextInfo titleTextInfo;
     protected TextInfo messageTextInfo;
@@ -92,6 +116,10 @@ public class MessageDialog extends BaseDialog {
     
     public static MessageDialog build() {
         return new MessageDialog();
+    }
+    
+    public static MessageDialog build(DialogXStyle style) {
+        return new MessageDialog().setStyle(style);
     }
     
     public static MessageDialog build(OnBindView<MessageDialog> onBindView) {
@@ -200,7 +228,21 @@ public class MessageDialog extends BaseDialog {
     
     protected DialogImpl dialogImpl;
     
-    public void show() {
+    public MessageDialog show() {
+        if (isHide && getDialogView() != null && isShow) {
+            if (hideWithExitAnim && getDialogImpl() != null) {
+                getDialogView().setVisibility(View.VISIBLE);
+                getDialogImpl().getDialogXAnimImpl().doShowAnim(me, new ObjectRunnable<Float>() {
+                    @Override
+                    public void run(Float value) {
+                        getDialogImpl().boxRoot.setBkgAlpha(value);
+                    }
+                });
+            } else {
+                getDialogView().setVisibility(View.VISIBLE);
+            }
+            return this;
+        }
         super.beforeShow();
         if (getDialogView() == null) {
             int layoutId = style.layout(isLightTheme());
@@ -211,6 +253,7 @@ public class MessageDialog extends BaseDialog {
             if (dialogView != null) dialogView.setTag(me);
         }
         show(dialogView);
+        return this;
     }
     
     public void show(Activity activity) {
@@ -267,6 +310,7 @@ public class MessageDialog extends BaseDialog {
             btnSelectNegative = convertView.findViewById(R.id.btn_selectNegative);
             btnSelectPositive = convertView.findViewById(R.id.btn_selectPositive);
             init();
+            
             dialogImpl = this;
             refreshView();
         }
@@ -294,50 +338,34 @@ public class MessageDialog extends BaseDialog {
                 @Override
                 public void onShow() {
                     isShow = true;
-                    int enterAnimResId = style.enterAnimResId() == 0 ? R.anim.anim_dialogx_default_enter : style.enterAnimResId();
-                    if (overrideEnterAnimRes != 0) {
-                        enterAnimResId = overrideEnterAnimRes;
-                    }
-                    if (customEnterAnimResId != 0) {
-                        enterAnimResId = customEnterAnimResId;
-                    }
-                    Animation enterAnim = AnimationUtils.loadAnimation(getContext(), enterAnimResId);
-                    long enterAnimDurationTemp = enterAnim.getDuration();
-                    if (overrideEnterDuration >= 0) {
-                        enterAnimDurationTemp = overrideEnterDuration;
-                    }
-                    if (enterAnimDuration >= 0) {
-                        enterAnimDurationTemp = enterAnimDuration;
-                    }
-                    enterAnim.setDuration(enterAnimDurationTemp);
-                    enterAnim.setInterpolator(new DecelerateInterpolator());
-                    bkg.startAnimation(enterAnim);
+                    preShow = false;
                     
-                    ValueAnimator bkgAlpha = ValueAnimator.ofFloat(0f, 1f);
-                    bkgAlpha.setDuration(enterAnimDurationTemp);
-                    bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                    lifecycle.setCurrentState(Lifecycle.State.CREATED);
+                    
+                    onDialogShow();
+                    getDialogLifecycleCallback().onShow(me);
+                    
+                    getDialogXAnimImpl().doShowAnim(me, new ObjectRunnable<Float>() {
                         @Override
-                        public void onAnimationUpdate(ValueAnimator animation) {
-                            float value = (float) animation.getAnimatedValue();
+                        public void run(Float value) {
                             boxRoot.setBkgAlpha(value);
                         }
                     });
-                    bkgAlpha.start();
-                    
-                    getDialogLifecycleCallback().onShow(me);
                     
                     if (style.messageDialogBlurSettings() != null && style.messageDialogBlurSettings().blurBackground()) {
                         bkg.post(new Runnable() {
                             @Override
                             public void run() {
                                 int blurFrontColor = getResources().getColor(style.messageDialogBlurSettings().blurForwardColorRes(isLightTheme()));
-                                blurView = new BlurView(bkg.getContext(), null);
+                                blurView = new BlurView(getOwnActivity(), null);
                                 RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(bkg.getWidth(), bkg.getHeight());
                                 params.addRule(RelativeLayout.CENTER_IN_PARENT);
                                 blurView.setOverlayColor(backgroundColor == -1 ? blurFrontColor : backgroundColor);
                                 blurView.setTag("blurView");
                                 blurView.setRadiusPx(style.messageDialogBlurSettings().blurBackgroundRoundRadiusPx());
                                 bkg.addView(blurView, 0, params);
+                                
+                                lifecycle.setCurrentState(Lifecycle.State.RESUMED);
                             }
                         });
                     }
@@ -371,21 +399,25 @@ public class MessageDialog extends BaseDialog {
                     getDialogLifecycleCallback().onDismiss(me);
                     dialogView = null;
                     dialogLifecycleCallback = null;
+                    
+                    lifecycle.setCurrentState(Lifecycle.State.DESTROYED);
                     System.gc();
                 }
             });
             
-            boxRoot.setOnBackPressedListener(new OnBackPressedListener() {
+            boxRoot.setOnBackPressedListener(new DialogXBaseRelativeLayout.PrivateBackPressedListener() {
                 @Override
                 public boolean onBackPressed() {
-                    if (onBackPressedListener != null && onBackPressedListener.onBackPressed()) {
-                        dismiss();
-                        return false;
+                    if (onBackPressedListener != null) {
+                        if (onBackPressedListener.onBackPressed(me)) {
+                            dismiss();
+                        }
+                    } else {
+                        if (isCancelable()) {
+                            dismiss();
+                        }
                     }
-                    if (isCancelable()) {
-                        dismiss();
-                    }
-                    return false;
+                    return true;
                 }
             });
             btnSelectPositive.setOnClickListener(new View.OnClickListener() {
@@ -454,10 +486,67 @@ public class MessageDialog extends BaseDialog {
                     }
                 }
             });
+            
+            onDialogInit();
         }
         
         public void refreshView() {
-            log("#refreshView");
+            if (boxRoot == null || getTopActivity() == null) {
+                return;
+            }
+            
+            //修改下划线颜色
+            if (inputInfo != null && inputInfo.getBottomLineColor() != null) {
+                txtInput.getBackground().mutate().setColorFilter(inputInfo.getBottomLineColor(), PorterDuff.Mode.SRC_ATOP);
+            }
+            //修改光标颜色
+            if (inputInfo != null && inputInfo.getCursorColor() != null) {
+                int cursorColor = inputInfo.getCursorColor();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (txtInput.getTextCursorDrawable() != null) {
+                        txtInput.getTextCursorDrawable().mutate().setColorFilter((new PorterDuffColorFilter(cursorColor, PorterDuff.Mode.SRC_ATOP)));
+                    } else {
+                        try {
+                            @SuppressLint("SoonBlockedPrivateApi")
+                            Field field = TextView.class.getDeclaredField("mCursorDrawableRes");
+                            field.setAccessible(true);
+                            field.set(txtInput, R.drawable.rect_dialogx_defalut_edittxt_cursor);
+                            txtInput.getTextCursorDrawable().mutate().setColorFilter((new PorterDuffColorFilter(cursorColor, PorterDuff.Mode.SRC_ATOP)));
+                        } catch (Throwable throwable) {
+                            log("DialogX: 在对话框" + dialogKey() + "中设置光标颜色时发生错误！");
+                            if (DialogX.DEBUGMODE) {
+                                throwable.printStackTrace();
+                            }
+                        }
+                    }
+                } else {
+                    //Thanks for @Jared Rummler https://stackoverflow.com/questions/11554078/set-textcursordrawable-programmatically/57555148#57555148
+                    try {
+                        Field fCursorDrawableRes = TextView.class.getDeclaredField("mCursorDrawableRes");
+                        fCursorDrawableRes.setAccessible(true);
+                        int mCursorDrawableRes = fCursorDrawableRes.getInt(txtInput);
+                        Field fEditor = TextView.class.getDeclaredField("mEditor");
+                        fEditor.setAccessible(true);
+                        Object editor = fEditor.get(txtInput);
+                        Class<?> clazz = editor.getClass();
+                        Field fCursorDrawable = clazz.getDeclaredField("mCursorDrawable");
+                        fCursorDrawable.setAccessible(true);
+                        Drawable[] drawables = new Drawable[2];
+                        drawables[0] = txtInput.getContext().getResources().getDrawable(mCursorDrawableRes);
+                        drawables[1] = txtInput.getContext().getResources().getDrawable(mCursorDrawableRes);
+                        drawables[0].setColorFilter(cursorColor, PorterDuff.Mode.SRC_IN);
+                        drawables[1].setColorFilter(cursorColor, PorterDuff.Mode.SRC_IN);
+                        fCursorDrawable.set(editor, drawables);
+                    } catch (Throwable throwable) {
+                        log("DialogX: 在对话框" + dialogKey() + "中设置光标颜色时发生错误！");
+                        if (DialogX.DEBUGMODE) {
+                            throwable.printStackTrace();
+                        }
+                    }
+                }
+            }
+            
+            boxRoot.setRootPadding(screenPaddings[0], screenPaddings[1], screenPaddings[2], screenPaddings[3]);
             if (backgroundColor != -1) {
                 tintColor(bkg, backgroundColor);
                 if (style instanceof MaterialStyle) {
@@ -467,15 +556,42 @@ public class MessageDialog extends BaseDialog {
                 }
             }
             
+            
             bkg.setMaxWidth(getMaxWidth());
+            bkg.setMaxHeight(getMaxHeight());
+            bkg.setMinimumWidth(getMinWidth());
+            bkg.setMinimumHeight(getMinHeight());
+            
+            View inputBoxView = boxRoot.findViewWithTag("dialogx_editbox");
             if (me instanceof InputDialog) {
+                if (inputBoxView != null) {
+                    inputBoxView.setVisibility(View.VISIBLE);
+                }
                 txtInput.setVisibility(View.VISIBLE);
                 boxRoot.bindFocusView(txtInput);
             } else {
+                if (inputBoxView != null) {
+                    inputBoxView.setVisibility(View.GONE);
+                }
                 txtInput.setVisibility(View.GONE);
             }
             boxRoot.setClickable(true);
-            if (maskColor != -1) boxRoot.setBackgroundColor(maskColor);
+            if (maskColor != -1) {
+                boxRoot.setBackgroundColor(maskColor);
+            }
+            if (backgroundRadius > -1) {
+                GradientDrawable gradientDrawable = (GradientDrawable) bkg.getBackground();
+                if (gradientDrawable != null) gradientDrawable.setCornerRadius(backgroundRadius);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    bkg.setOutlineProvider(new ViewOutlineProvider() {
+                        @Override
+                        public void getOutline(View view, Outline outline) {
+                            outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), backgroundRadius);
+                        }
+                    });
+                    bkg.setClipToOutline(true);
+                }
+            }
             
             showText(txtDialogTitle, title);
             showText(txtDialogTip, message);
@@ -498,6 +614,13 @@ public class MessageDialog extends BaseDialog {
             useTextInfo(btnSelectPositive, okTextInfo);
             useTextInfo(btnSelectNegative, cancelTextInfo);
             useTextInfo(btnSelectOther, otherTextInfo);
+            
+            if (titleIcon != null) {
+                int size = (int) txtDialogTitle.getTextSize();
+                titleIcon.setBounds(0, 0, size, size);
+                txtDialogTitle.setCompoundDrawablePadding(dip2px(10));
+                txtDialogTitle.setCompoundDrawables(titleIcon, null, null, null);
+            }
             
             if (inputInfo != null) {
                 if (inputInfo.getMAX_LENGTH() != -1)
@@ -559,13 +682,13 @@ public class MessageDialog extends BaseDialog {
                                 }
                                 break;
                             case DialogXStyle.SPACE:
-                                Space space = new Space(getContext());
+                                Space space = new Space(getTopActivity());
                                 LinearLayout.LayoutParams spaceLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
                                 spaceLp.weight = 1;
                                 boxButton.addView(space, spaceLp);
                                 break;
                             case DialogXStyle.SPLIT:
-                                View splitView = new View(getContext());
+                                View splitView = new View(getTopActivity());
                                 splitView.setBackgroundColor(getResources().getColor(style.splitColorRes(isLightTheme())));
                                 LinearLayout.LayoutParams viewLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, style.splitWidthPx());
                                 boxButton.addView(splitView, viewLp);
@@ -611,7 +734,7 @@ public class MessageDialog extends BaseDialog {
                                 } else {
                                     break;
                                 }
-                                Space space = new Space(getContext());
+                                Space space = new Space(getTopActivity());
                                 LinearLayout.LayoutParams spaceLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                                 spaceLp.weight = 1;
                                 boxButton.addView(space, spaceLp);
@@ -624,7 +747,7 @@ public class MessageDialog extends BaseDialog {
                                 } else {
                                     break;
                                 }
-                                View splitView = new View(getContext());
+                                View splitView = new View(getTopActivity());
                                 splitView.setBackgroundColor(getResources().getColor(style.splitColorRes(isLightTheme())));
                                 LinearLayout.LayoutParams viewLp = new LinearLayout.LayoutParams(style.splitWidthPx(), ViewGroup.LayoutParams.MATCH_PARENT);
                                 boxButton.addView(splitView, viewLp);
@@ -635,15 +758,21 @@ public class MessageDialog extends BaseDialog {
             }
             
             //Events
-            if (isCancelable()) {
-                boxRoot.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        doDismiss(v);
-                    }
-                });
+            if (bkgInterceptTouch) {
+                if (isCancelable()) {
+                    boxRoot.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (onBackgroundMaskClickListener == null || !onBackgroundMaskClickListener.onClick(me, v)) {
+                                doDismiss(v);
+                            }
+                        }
+                    });
+                } else {
+                    boxRoot.setOnClickListener(null);
+                }
             } else {
-                boxRoot.setOnClickListener(null);
+                boxRoot.setClickable(false);
             }
             
             if (onBindView != null && onBindView.getCustomView() != null) {
@@ -652,54 +781,102 @@ public class MessageDialog extends BaseDialog {
             } else {
                 boxCustom.setVisibility(View.GONE);
             }
+            onDialogRefreshUI();
         }
         
         public void doDismiss(View v) {
             if (v != null) v.setEnabled(false);
-            if (getContext() == null) return;
+            if (getTopActivity() == null) return;
             
             if (!dismissAnimFlag) {
                 dismissAnimFlag = true;
-                int exitAnimResId = style.exitAnimResId() == 0 ? R.anim.anim_dialogx_default_exit : style.exitAnimResId();
-                if (overrideExitAnimRes != 0) {
-                    exitAnimResId = overrideExitAnimRes;
-                }
-                if (customExitAnimResId != 0) {
-                    exitAnimResId = customExitAnimResId;
-                }
-                Animation exitAnim = AnimationUtils.loadAnimation(getContext(), exitAnimResId);
-                long exitAnimDurationTemp = exitAnim.getDuration();
-                exitAnim.setInterpolator(new AccelerateInterpolator());
-                if (overrideExitDuration >= 0) {
-                    exitAnimDurationTemp = overrideExitDuration;
-                }
-                if (exitAnimDuration >= 0) {
-                    exitAnimDurationTemp = exitAnimDuration;
-                }
-                exitAnim.setDuration(exitAnimDurationTemp);
-                bkg.startAnimation(exitAnim);
                 
-                ValueAnimator bkgAlpha = ValueAnimator.ofFloat(1f, 0f);
-                bkgAlpha.setDuration(exitAnimDurationTemp);
-                bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                getDialogXAnimImpl().doExitAnim(me, new ObjectRunnable<Float>() {
                     @Override
-                    public void onAnimationUpdate(ValueAnimator animation) {
+                    public void run(Float value) {
                         if (boxRoot != null) {
-                            float value = (float) animation.getAnimatedValue();
                             boxRoot.setBkgAlpha(value);
-                            if (value == 0) boxRoot.setVisibility(View.GONE);
+                        }
+                        if (value == 0) {
+                            if (boxRoot != null) {
+                                boxRoot.setVisibility(View.GONE);
+                            }
+                            dismiss(dialogView);
                         }
                     }
                 });
-                bkgAlpha.start();
-                
-                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        dismiss(dialogView);
-                    }
-                }, exitAnimDurationTemp);
             }
+        }
+        
+        protected DialogXAnimInterface<MessageDialog> getDialogXAnimImpl() {
+            if (dialogXAnimImpl == null) {
+                dialogXAnimImpl = new DialogXAnimInterface<MessageDialog>() {
+                    @Override
+                    public void doShowAnim(MessageDialog dialog, ObjectRunnable<Float> animProgress) {
+                        int enterAnimResId = style.enterAnimResId() == 0 ? R.anim.anim_dialogx_default_enter : style.enterAnimResId();
+                        if (overrideEnterAnimRes != 0) {
+                            enterAnimResId = overrideEnterAnimRes;
+                        }
+                        if (customEnterAnimResId != 0) {
+                            enterAnimResId = customEnterAnimResId;
+                        }
+                        Animation enterAnim = AnimationUtils.loadAnimation(getTopActivity(), enterAnimResId);
+                        long enterAnimDurationTemp = enterAnim.getDuration();
+                        if (overrideEnterDuration >= 0) {
+                            enterAnimDurationTemp = overrideEnterDuration;
+                        }
+                        if (enterAnimDuration >= 0) {
+                            enterAnimDurationTemp = enterAnimDuration;
+                        }
+                        enterAnim.setDuration(enterAnimDurationTemp);
+                        enterAnim.setInterpolator(new DecelerateInterpolator());
+                        bkg.startAnimation(enterAnim);
+                        
+                        ValueAnimator bkgAlpha = ValueAnimator.ofFloat(0f, 1f);
+                        bkgAlpha.setDuration(enterAnimDurationTemp);
+                        bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                            @Override
+                            public void onAnimationUpdate(ValueAnimator animation) {
+                                animProgress.run((Float) animation.getAnimatedValue());
+                            }
+                        });
+                        bkgAlpha.start();
+                    }
+                    
+                    @Override
+                    public void doExitAnim(MessageDialog dialog, ObjectRunnable<Float> animProgress) {
+                        int exitAnimResId = style.exitAnimResId() == 0 ? R.anim.anim_dialogx_default_exit : style.exitAnimResId();
+                        if (overrideExitAnimRes != 0) {
+                            exitAnimResId = overrideExitAnimRes;
+                        }
+                        if (customExitAnimResId != 0) {
+                            exitAnimResId = customExitAnimResId;
+                        }
+                        Animation exitAnim = AnimationUtils.loadAnimation(getTopActivity(), exitAnimResId);
+                        long exitAnimDurationTemp = exitAnim.getDuration();
+                        exitAnim.setInterpolator(new AccelerateInterpolator());
+                        if (overrideExitDuration >= 0) {
+                            exitAnimDurationTemp = overrideExitDuration;
+                        }
+                        if (exitAnimDuration >= 0) {
+                            exitAnimDurationTemp = exitAnimDuration;
+                        }
+                        exitAnim.setDuration(exitAnimDurationTemp);
+                        bkg.startAnimation(exitAnim);
+                        
+                        ValueAnimator bkgAlpha = ValueAnimator.ofFloat(1f, 0f);
+                        bkgAlpha.setDuration(exitAnimDurationTemp);
+                        bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                            @Override
+                            public void onAnimationUpdate(ValueAnimator animation) {
+                                animProgress.run((Float) animation.getAnimatedValue());
+                            }
+                        });
+                        bkgAlpha.start();
+                    }
+                };
+            }
+            return dialogXAnimImpl;
         }
     }
     
@@ -709,8 +886,13 @@ public class MessageDialog extends BaseDialog {
     }
     
     public void dismiss() {
-        if (dialogImpl == null) return;
-        dialogImpl.doDismiss(dialogImpl.bkg);
+        runOnMain(new Runnable() {
+            @Override
+            public void run() {
+                if (dialogImpl == null) return;
+                dialogImpl.doDismiss(dialogImpl.bkg);
+            }
+        });
     }
     
     public DialogLifecycleCallback<MessageDialog> getDialogLifecycleCallback() {
@@ -974,11 +1156,11 @@ public class MessageDialog extends BaseDialog {
         return this;
     }
     
-    public OnBackPressedListener getOnBackPressedListener() {
-        return onBackPressedListener;
+    public OnBackPressedListener<MessageDialog> getOnBackPressedListener() {
+        return (OnBackPressedListener<MessageDialog>) onBackPressedListener;
     }
     
-    public MessageDialog setOnBackPressedListener(OnBackPressedListener onBackPressedListener) {
+    public MessageDialog setOnBackPressedListener(OnBackPressedListener<MessageDialog> onBackPressedListener) {
         this.onBackPressedListener = onBackPressedListener;
         return this;
     }
@@ -1071,9 +1253,31 @@ public class MessageDialog extends BaseDialog {
         show(dialogView);
     }
     
+    private boolean isHide;
+    
     public void hide() {
+        isHide = true;
+        hideWithExitAnim = false;
         if (getDialogView() != null) {
             getDialogView().setVisibility(View.GONE);
+        }
+    }
+    
+    protected boolean hideWithExitAnim;
+    
+    public void hideWithExitAnim() {
+        hideWithExitAnim = true;
+        isHide = true;
+        if (getDialogImpl() != null) {
+            getDialogImpl().getDialogXAnimImpl().doExitAnim(me, new ObjectRunnable<Float>() {
+                @Override
+                public void run(Float value) {
+                    getDialogImpl().boxRoot.setBkgAlpha(value);
+                    if (value == 0 && getDialogView() != null) {
+                        getDialogView().setVisibility(View.GONE);
+                    }
+                }
+            });
         }
     }
     
@@ -1104,8 +1308,97 @@ public class MessageDialog extends BaseDialog {
         return this;
     }
     
+    public MessageDialog setMaxHeight(int maxHeight) {
+        this.maxHeight = maxHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public MessageDialog setMinHeight(int minHeight) {
+        this.minHeight = minHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public MessageDialog setMinWidth(int minWidth) {
+        this.minWidth = minWidth;
+        refreshUI();
+        return this;
+    }
+    
     public MessageDialog setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
         this.dialogImplMode = dialogImplMode;
+        return this;
+    }
+    
+    public boolean isBkgInterceptTouch() {
+        return bkgInterceptTouch;
+    }
+    
+    public MessageDialog setBkgInterceptTouch(boolean bkgInterceptTouch) {
+        this.bkgInterceptTouch = bkgInterceptTouch;
+        return this;
+    }
+    
+    public OnBackgroundMaskClickListener<MessageDialog> getOnBackgroundMaskClickListener() {
+        return (OnBackgroundMaskClickListener<MessageDialog>) onBackgroundMaskClickListener;
+    }
+    
+    public MessageDialog setOnBackgroundMaskClickListener(OnBackgroundMaskClickListener<MessageDialog> onBackgroundMaskClickListener) {
+        this.onBackgroundMaskClickListener = onBackgroundMaskClickListener;
+        return this;
+    }
+    
+    public MessageDialog setRadius(float radiusPx) {
+        backgroundRadius = radiusPx;
+        refreshUI();
+        return this;
+    }
+    
+    public float getRadius() {
+        return backgroundRadius;
+    }
+    
+    public Drawable getTitleIcon() {
+        return titleIcon;
+    }
+    
+    public MessageDialog setTitleIcon(Bitmap titleIcon) {
+        this.titleIcon = new BitmapDrawable(getResources(), titleIcon);
+        refreshUI();
+        return this;
+    }
+    
+    public MessageDialog setTitleIcon(int titleIconResId) {
+        this.titleIcon = getResources().getDrawable(titleIconResId);
+        refreshUI();
+        return this;
+    }
+    
+    public MessageDialog setTitleIcon(Drawable titleIcon) {
+        this.titleIcon = titleIcon;
+        refreshUI();
+        return this;
+    }
+    
+    public DialogXAnimInterface<MessageDialog> getDialogXAnimImpl() {
+        return dialogXAnimImpl;
+    }
+    
+    public MessageDialog setDialogXAnimImpl(DialogXAnimInterface<MessageDialog> dialogXAnimImpl) {
+        this.dialogXAnimImpl = dialogXAnimImpl;
+        return this;
+    }
+    
+    public MessageDialog setRootPadding(int padding) {
+        this.screenPaddings = new int[]{padding, padding, padding, padding};
+        refreshUI();
+        return this;
+    }
+    
+    public MessageDialog setRootPadding(int paddingLeft, int paddingTop, int paddingRight, int paddingBottom) {
+        this.screenPaddings = new int[]{paddingLeft, paddingTop, paddingRight, paddingBottom};
+        refreshUI();
         return this;
     }
 }

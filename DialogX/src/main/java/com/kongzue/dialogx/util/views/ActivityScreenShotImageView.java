@@ -5,21 +5,22 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.os.Build;
 import android.util.AttributeSet;
-import android.util.Log;
-import android.view.Display;
-import android.view.Gravity;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import androidx.appcompat.widget.AppCompatImageView;
 
+import com.kongzue.dialogx.impl.ActivityLifecycleImpl;
 import com.kongzue.dialogx.interfaces.BaseDialog;
+import com.kongzue.dialogx.util.DialogXFloatingWindowActivity;
+
+import java.lang.ref.WeakReference;
 
 /**
  * @author: Kongzue
@@ -28,7 +29,7 @@ import com.kongzue.dialogx.interfaces.BaseDialog;
  * @mail: myzcxhh@live.cn
  * @createTime: 2019/11/17 23:53
  */
-public class ActivityScreenShotImageView extends AppCompatImageView {
+public class ActivityScreenShotImageView extends ImageView {
     
     float width, height, mRadius;
     
@@ -57,7 +58,6 @@ public class ActivityScreenShotImageView extends AppCompatImageView {
         this.mRadius = mRadius;
         invalidate();
     }
-    
     
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
@@ -110,30 +110,79 @@ public class ActivityScreenShotImageView extends AppCompatImageView {
     }
     
     private void doScreenshotActivityAndZoom() {
-        if (BaseDialog.getRootFrameLayout() == null) return;
-        final View view = BaseDialog.getRootFrameLayout();
+        View contentView = getContentView();
+        if (contentView == null) {
+            return;
+        }
         //先执行一次绘制，防止出现闪屏问题
-        if (!inited) drawViewImage(view);
-        view.post(new Runnable() {
+        if (!inited) drawViewImage(contentView);
+        contentView.post(new Runnable() {
             @Override
             public void run() {
                 //当view渲染完成后再次通知刷新一下界面（当旋转屏幕执行时，很可能出现渲染延迟的问题）
-                drawViewImage(view);
+                drawViewImage(contentView);
                 inited = true;
             }
         });
     }
     
+    private View getContentView() {
+        Activity topActivity = ActivityLifecycleImpl.getTopActivity();
+        if (topActivity == null) {
+            return null;
+        }
+//        for (int i = BaseDialog.getRunningDialogList().size() - 1; i >= 0; i--) {
+//            BaseDialog baseDialog = BaseDialog.getRunningDialogList().get(i);
+//            if (!(baseDialog instanceof PopTip) && baseDialog.getActivity() == activity) {
+//                if (baseDialog.getDialogView() == null) {
+//                    return false;
+//                }
+//                return baseDialog.getDialogView().dispatchTouchEvent(event);
+//            }
+//        }
+        
+        if (getContext() instanceof Activity) {
+            return ((Activity) getContext()).getWindow().getDecorView();
+        }else{
+            if (topActivity instanceof DialogXFloatingWindowActivity) {
+                if (((DialogXFloatingWindowActivity) topActivity).isScreenshot()) {
+                    return topActivity.getWindow().getDecorView();
+                }
+            }
+            return topActivity.getWindow().getDecorView();
+        }
+    }
+    
     private boolean inited = false;
     private boolean isScreenshotSuccess;
+    private WeakReference<View> contentView;
+    public static boolean hideContentView = false;
     
     private void drawViewImage(View view) {
+        if (view.getWidth() == 0 || view.getHeight() == 0) return;
         view.buildDrawingCache();
         Rect rect = new Rect();
         view.getWindowVisibleDisplayFrame(rect);
         view.setDrawingCacheEnabled(true);
         setImageBitmap(Bitmap.createBitmap(view.getDrawingCache(), 0, 0, view.getWidth(), view.getHeight()));
         view.destroyDrawingCache();
+        if (hideContentView) {
+            if (contentView != null && contentView.get() != null) {
+                contentView.get().setVisibility(VISIBLE);
+            }
+            View childView = ((ViewGroup) view).getChildAt(0);
+            childView.setVisibility(GONE);
+            contentView = new WeakReference<>(childView);
+        }
         isScreenshotSuccess = true;
+    }
+    
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (contentView != null && contentView.get() != null && hideContentView) {
+            contentView.get().setVisibility(VISIBLE);
+            contentView.clear();
+        }
     }
 }

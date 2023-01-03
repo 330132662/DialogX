@@ -1,5 +1,8 @@
 package com.kongzue.dialogx.dialogs;
 
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,8 +17,11 @@ import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.R;
 import com.kongzue.dialogx.interfaces.BottomMenuListViewTouchEvent;
 import com.kongzue.dialogx.interfaces.DialogLifecycleCallback;
+import com.kongzue.dialogx.interfaces.DialogXAnimInterface;
 import com.kongzue.dialogx.interfaces.DialogXStyle;
+import com.kongzue.dialogx.interfaces.MenuItemTextInfoInterceptor;
 import com.kongzue.dialogx.interfaces.OnBackPressedListener;
+import com.kongzue.dialogx.interfaces.OnBackgroundMaskClickListener;
 import com.kongzue.dialogx.interfaces.OnBindView;
 import com.kongzue.dialogx.interfaces.OnDialogButtonClickListener;
 import com.kongzue.dialogx.interfaces.OnIconChangeCallBack;
@@ -50,11 +56,16 @@ public class BottomMenu extends BottomDialog {
     protected int selectionIndex = -1;
     protected SELECT_MODE selectMode = SELECT_MODE.NONE;
     protected ArrayList<Integer> selectionItems;
+    protected boolean showSelectedBackgroundTips = true;
     
     protected OnMenuItemClickListener<BottomMenu> onMenuItemClickListener;
     
     public static BottomMenu build() {
         return new BottomMenu();
+    }
+    
+    public static BottomMenu build(DialogXStyle style) {
+        return new BottomMenu().setStyle(style);
     }
     
     public static BottomMenu build(OnBindView<BottomDialog> onBindView) {
@@ -63,15 +74,10 @@ public class BottomMenu extends BottomDialog {
     
     protected BottomMenu() {
         super();
-        if (style.overrideBottomDialogRes() != null) {
-            bottomDialogMaxHeight = style.overrideBottomDialogRes().overrideBottomDialogMaxHeight();
-        }
-        if (bottomDialogMaxHeight <= 1 && bottomDialogMaxHeight > 0f) {
-            bottomDialogMaxHeight = (int) (getRootFrameLayout().getMeasuredHeight() * bottomDialogMaxHeight);
-        }
     }
     
     private OnIconChangeCallBack<BottomMenu> onIconChangeCallBack;
+    private MenuItemTextInfoInterceptor<BottomMenu> menuItemTextInfoInterceptor;
     private BottomDialogListView listView;
     private BaseAdapter menuListAdapter;
     private List<CharSequence> menuList;
@@ -472,12 +478,12 @@ public class BottomMenu extends BottomDialog {
     private long lastClickTime = 0;
     
     @Override
-    protected void onDialogInit(final DialogImpl dialog) {
-        if (dialog != null) {
-            dialog.boxList.setVisibility(View.VISIBLE);
+    protected void onDialogShow() {
+        if (getDialogImpl() != null) {
+            getDialogImpl().boxList.setVisibility(View.VISIBLE);
             
             if (!isAllowInterceptTouch()) {
-                dialog.bkg.setMaxHeight((int) bottomDialogMaxHeight);
+                getDialogImpl().bkg.setMaxHeight((int) bottomDialogMaxHeight);
                 if (bottomDialogMaxHeight != 0) {
                     dialogImpl.scrollView.lockScroll(true);
                 }
@@ -493,7 +499,12 @@ public class BottomMenu extends BottomDialog {
                 dividerDrawableResId = isLightTheme() ? R.drawable.rect_dialogx_material_menu_split_divider : R.drawable.rect_dialogx_material_menu_split_divider_night;
             }
             
-            listView = new BottomDialogListView(dialog, getContext());
+            
+            if (!isLightTheme()) {
+                listView = new BottomDialogListView(getDialogImpl(), getTopActivity(), R.style.DialogXCompatThemeDark);
+            } else {
+                listView = new BottomDialogListView(getDialogImpl(), getTopActivity());
+            }
             listView.setOverScrollMode(OVER_SCROLL_NEVER);
             listView.setDivider(getResources().getDrawable(dividerDrawableResId));
             listView.setDividerHeight(dividerHeight);
@@ -501,7 +512,7 @@ public class BottomMenu extends BottomDialog {
             listView.setBottomMenuListViewTouchEvent(new BottomMenuListViewTouchEvent() {
                 @Override
                 public void down(MotionEvent event) {
-                    touchDownY = dialog.bkg.getY();
+                    touchDownY = getDialogImpl().bkg.getY();
                 }
             });
             
@@ -511,7 +522,7 @@ public class BottomMenu extends BottomDialog {
                     long currentTime = System.currentTimeMillis();
                     if (currentTime - lastClickTime > ITEM_CLICK_DELAY) {
                         lastClickTime = currentTime;
-                        float deltaY = Math.abs(touchDownY - dialog.bkg.getY());
+                        float deltaY = Math.abs(touchDownY - getDialogImpl().bkg.getY());
                         if (deltaY > dip2px(15)) {
                             return;
                         }
@@ -586,29 +597,31 @@ public class BottomMenu extends BottomDialog {
             }
             
             RelativeLayout.LayoutParams listViewLp = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            dialog.boxList.addView(listView, listViewLp);
+            getDialogImpl().boxList.addView(listView, listViewLp);
             
             refreshUI();
             
             //部分主题下选中项默认按下效果
-            listView.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (menuListAdapter instanceof BottomMenuArrayAdapter) {
-                        BottomMenuArrayAdapter bottomMenuArrayAdapter = ((BottomMenuArrayAdapter) menuListAdapter);
-                        
-                        final View selectItemView = listView.getChildAt(getSelection());
-                        if (selectItemView != null) {
-                            selectItemView.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    selectItemView.setPressed(true);
-                                }
-                            });
+            if (showSelectedBackgroundTips) {
+                listView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (menuListAdapter instanceof BottomMenuArrayAdapter && showSelectedBackgroundTips) {
+                            BottomMenuArrayAdapter bottomMenuArrayAdapter = ((BottomMenuArrayAdapter) menuListAdapter);
+                
+                            View selectItemView = listView.getChildAt(getSelection());
+                            if (selectItemView != null) {
+                                selectItemView.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        selectItemView.setPressed(true);
+                                    }
+                                });
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
             
         }
     }
@@ -618,7 +631,7 @@ public class BottomMenu extends BottomDialog {
         if (getDialogImpl() == null) return;
         if (listView != null) {
             if (menuListAdapter == null) {
-                menuListAdapter = new BottomMenuArrayAdapter(me, getContext(), menuList);
+                menuListAdapter = new BottomMenuArrayAdapter(me, getTopActivity(), menuList);
             }
             if (listView.getAdapter() == null) {
                 listView.setAdapter(menuListAdapter);
@@ -698,11 +711,11 @@ public class BottomMenu extends BottomDialog {
         return this;
     }
     
-    public OnBackPressedListener getOnBackPressedListener() {
-        return onBackPressedListener;
+    public OnBackPressedListener<BottomDialog> getOnBackPressedListener() {
+        return (OnBackPressedListener<BottomDialog>) onBackPressedListener;
     }
     
-    public BottomMenu setOnBackPressedListener(OnBackPressedListener onBackPressedListener) {
+    public BottomMenu setOnBackPressedListener(OnBackPressedListener<BottomDialog> onBackPressedListener) {
         this.onBackPressedListener = onBackPressedListener;
         preRefreshUI();
         return this;
@@ -1092,6 +1105,24 @@ public class BottomMenu extends BottomDialog {
         return this;
     }
     
+    public BottomMenu setMaxHeight(int maxHeight) {
+        this.maxHeight = maxHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public BottomMenu setMinHeight(int minHeight) {
+        this.minHeight = minHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public BottomMenu setMinWidth(int minWidth) {
+        this.minWidth = minWidth;
+        refreshUI();
+        return this;
+    }
+    
     public BottomMenu setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
         this.dialogImplMode = dialogImplMode;
         return this;
@@ -1104,6 +1135,91 @@ public class BottomMenu extends BottomDialog {
     
     public BottomMenu setMenuTextInfo(TextInfo menuTextInfo) {
         this.menuTextInfo = menuTextInfo;
+        return this;
+    }
+    
+    public MenuItemTextInfoInterceptor<BottomMenu> getMenuItemTextInfoInterceptor() {
+        return menuItemTextInfoInterceptor;
+    }
+    
+    public BottomMenu setMenuItemTextInfoInterceptor(MenuItemTextInfoInterceptor<BottomMenu> menuItemTextInfoInterceptor) {
+        this.menuItemTextInfoInterceptor = menuItemTextInfoInterceptor;
+        return this;
+    }
+    
+    public boolean isBkgInterceptTouch() {
+        return bkgInterceptTouch;
+    }
+    
+    public BottomMenu setBkgInterceptTouch(boolean bkgInterceptTouch) {
+        this.bkgInterceptTouch = bkgInterceptTouch;
+        return this;
+    }
+    
+    public OnBackgroundMaskClickListener<BottomDialog> getOnBackgroundMaskClickListener() {
+        return onBackgroundMaskClickListener;
+    }
+    
+    public BottomMenu setOnBackgroundMaskClickListener(OnBackgroundMaskClickListener<BottomDialog> onBackgroundMaskClickListener) {
+        this.onBackgroundMaskClickListener = onBackgroundMaskClickListener;
+        return this;
+    }
+    
+    public BottomMenu setRadius(float radiusPx) {
+        backgroundRadius = radiusPx;
+        refreshUI();
+        return this;
+    }
+    
+    public float getRadius() {
+        return backgroundRadius;
+    }
+    
+    public BottomMenu setTitleIcon(Bitmap titleIcon) {
+        this.titleIcon = new BitmapDrawable(getResources(), titleIcon);
+        refreshUI();
+        return this;
+    }
+    
+    public BottomMenu setTitleIcon(int titleIconResId) {
+        this.titleIcon = getResources().getDrawable(titleIconResId);
+        refreshUI();
+        return this;
+    }
+    
+    public BottomMenu setTitleIcon(Drawable titleIcon) {
+        this.titleIcon = titleIcon;
+        refreshUI();
+        return this;
+    }
+    
+    public DialogXAnimInterface<BottomDialog> getDialogXAnimImpl() {
+        return dialogXAnimImpl;
+    }
+    
+    public BottomMenu setDialogXAnimImpl(DialogXAnimInterface<BottomDialog> dialogXAnimImpl) {
+        this.dialogXAnimImpl = dialogXAnimImpl;
+        return this;
+    }
+    
+    public BottomMenu setRootPadding(int padding) {
+        this.screenPaddings = new int[]{padding, padding, padding, padding};
+        refreshUI();
+        return this;
+    }
+    
+    public BottomMenu setRootPadding(int paddingLeft, int paddingTop, int paddingRight, int paddingBottom) {
+        this.screenPaddings = new int[]{paddingLeft, paddingTop, paddingRight, paddingBottom};
+        refreshUI();
+        return this;
+    }
+    
+    public boolean isShowSelectedBackgroundTips() {
+        return showSelectedBackgroundTips;
+    }
+    
+    public BottomMenu setShowSelectedBackgroundTips(boolean showSelectedBackgroundTips) {
+        this.showSelectedBackgroundTips = showSelectedBackgroundTips;
         return this;
     }
 }

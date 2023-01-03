@@ -3,13 +3,17 @@ package com.kongzue.dialogx.dialogs;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.Outline;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
+import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -18,18 +22,24 @@ import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.ColorRes;
+import androidx.annotation.NonNull;
+import androidx.lifecycle.Lifecycle;
 
 import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.R;
 import com.kongzue.dialogx.interfaces.BaseDialog;
+import com.kongzue.dialogx.interfaces.BottomDialogSlideEventLifecycleCallback;
 import com.kongzue.dialogx.interfaces.DialogConvertViewInterface;
 import com.kongzue.dialogx.interfaces.DialogLifecycleCallback;
+import com.kongzue.dialogx.interfaces.DialogXAnimInterface;
 import com.kongzue.dialogx.interfaces.DialogXStyle;
 import com.kongzue.dialogx.interfaces.OnBackPressedListener;
+import com.kongzue.dialogx.interfaces.OnBackgroundMaskClickListener;
 import com.kongzue.dialogx.interfaces.OnBindView;
 import com.kongzue.dialogx.interfaces.OnDialogButtonClickListener;
 import com.kongzue.dialogx.interfaces.ScrollController;
 import com.kongzue.dialogx.util.BottomDialogTouchEventInterceptor;
+import com.kongzue.dialogx.util.ObjectRunnable;
 import com.kongzue.dialogx.util.TextInfo;
 import com.kongzue.dialogx.util.views.BlurView;
 import com.kongzue.dialogx.util.views.BottomDialogScrollView;
@@ -59,7 +69,13 @@ public class BottomDialog extends BaseDialog {
     protected OnDialogButtonClickListener<BottomDialog> cancelButtonClickListener;
     protected OnDialogButtonClickListener<BottomDialog> okButtonClickListener;
     protected OnDialogButtonClickListener<BottomDialog> otherButtonClickListener;
+    protected OnBackgroundMaskClickListener<BottomDialog> onBackgroundMaskClickListener;
+    protected OnBackPressedListener<BottomDialog> onBackPressedListener;
     protected BOOLEAN privateCancelable;
+    protected boolean bkgInterceptTouch = true;
+    protected float backgroundRadius = -1;
+    protected Drawable titleIcon;
+    protected DialogXAnimInterface<BottomDialog> dialogXAnimImpl;
     
     protected TextInfo titleTextInfo;
     protected TextInfo messageTextInfo;
@@ -72,7 +88,7 @@ public class BottomDialog extends BaseDialog {
      * 此值用于，当禁用滑动时（style.overrideBottomDialogRes.touchSlide = false时）的最大显示高度。
      * 0：不限制，最大显示到屏幕可用高度。
      */
-    protected float bottomDialogMaxHeight = 0.6f;
+    protected float bottomDialogMaxHeight = 0f;
     
     protected DialogLifecycleCallback<BottomDialog> dialogLifecycleCallback;
     
@@ -91,6 +107,10 @@ public class BottomDialog extends BaseDialog {
     
     public static BottomDialog build() {
         return new BottomDialog();
+    }
+    
+    public static BottomDialog build(DialogXStyle style) {
+        return new BottomDialog().setStyle(style);
     }
     
     public static BottomDialog build(OnBindView<BottomDialog> onBindView) {
@@ -175,7 +195,21 @@ public class BottomDialog extends BaseDialog {
         return bottomDialog;
     }
     
-    public void show() {
+    public BottomDialog show() {
+        if (isHide && getDialogView() != null && isShow) {
+            if (hideWithExitAnim && getDialogImpl() != null) {
+                getDialogView().setVisibility(View.VISIBLE);
+                getDialogImpl().getDialogXAnimImpl().doShowAnim(me, new ObjectRunnable<Float>() {
+                    @Override
+                    public void run(Float value) {
+                        getDialogImpl().boxRoot.setBkgAlpha(value);
+                    }
+                });
+            } else {
+                getDialogView().setVisibility(View.VISIBLE);
+            }
+            return this;
+        }
         super.beforeShow();
         if (getDialogView() == null) {
             int layoutId = isLightTheme() ? R.layout.layout_dialogx_bottom_material : R.layout.layout_dialogx_bottom_material_dark;
@@ -188,6 +222,7 @@ public class BottomDialog extends BaseDialog {
             if (dialogView != null) dialogView.setTag(me);
         }
         show(dialogView);
+        return this;
     }
     
     public void show(Activity activity) {
@@ -236,7 +271,7 @@ public class BottomDialog extends BaseDialog {
             boxRoot = convertView.findViewById(R.id.box_root);
             boxBkg = convertView.findViewById(R.id.box_bkg);
             bkg = convertView.findViewById(R.id.bkg);
-            boxBody = convertView.findViewWithTag("body");
+            boxBody = convertView.findViewWithTag("blurBody");
             imgTab = convertView.findViewById(R.id.img_tab);
             txtDialogTitle = convertView.findViewById(R.id.txt_dialog_title);
             scrollView = convertView.findViewById(R.id.scrollView);
@@ -276,7 +311,6 @@ public class BottomDialog extends BaseDialog {
         
         @Override
         public void init() {
-            if (titleTextInfo == null) titleTextInfo = DialogX.menuTitleInfo;
             if (titleTextInfo == null) titleTextInfo = DialogX.titleTextInfo;
             if (messageTextInfo == null) messageTextInfo = DialogX.messageTextInfo;
             if (okTextInfo == null) okTextInfo = DialogX.okButtonTextInfo;
@@ -291,40 +325,46 @@ public class BottomDialog extends BaseDialog {
             if (btnSelectPositive != null) btnSelectPositive.getPaint().setFakeBoldText(true);
             if (btnSelectOther != null) btnSelectOther.getPaint().setFakeBoldText(true);
             
+            boxBkg.setY(getRootFrameLayout().getMeasuredHeight());
+            
             bkg.setMaxWidth(getMaxWidth());
+            bkg.setMaxHeight(getMaxHeight());
+            bkg.setMinimumWidth(getMinWidth());
+            bkg.setMinimumHeight(getMinHeight());
+            
             boxRoot.setParentDialog(me);
             boxRoot.setOnLifecycleCallBack(new DialogXBaseRelativeLayout.OnLifecycleCallBack() {
                 @Override
                 public void onShow() {
-                    bkg.setY(getRootFrameLayout().getMeasuredHeight());
                     
                     isShow = true;
+                    preShow = false;
                     
-                    boxContent.getViewTreeObserver().addOnGlobalLayoutListener(onContentViewLayoutChangeListener);
-                    
+                    lifecycle.setCurrentState(Lifecycle.State.CREATED);
                     getDialogLifecycleCallback().onShow(me);
                     
-                    onDialogInit(dialogImpl);
+                    onDialogShow();
                     
                     boxRoot.post(new Runnable() {
                         @Override
                         public void run() {
                             if (style.messageDialogBlurSettings() != null && style.messageDialogBlurSettings().blurBackground() && boxBody != null && boxCancel != null) {
                                 int blurFrontColor = getResources().getColor(style.messageDialogBlurSettings().blurForwardColorRes(isLightTheme()));
-                                blurView = new BlurView(bkg.getContext(), null);
+                                blurView = new BlurView(getOwnActivity(), null);
                                 RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(bkg.getWidth(), bkg.getHeight());
                                 blurView.setOverlayColor(backgroundColor == -1 ? blurFrontColor : backgroundColor);
                                 blurView.setTag("blurView");
                                 blurView.setRadiusPx(style.messageDialogBlurSettings().blurBackgroundRoundRadiusPx());
                                 boxBody.addView(blurView, 0, params);
                                 
-                                cancelBlurView = new BlurView(boxCancel.getContext(), null);
+                                cancelBlurView = new BlurView(getOwnActivity(), null);
                                 RelativeLayout.LayoutParams cancelButtonLp = new RelativeLayout.LayoutParams(boxCancel.getWidth(), boxCancel.getHeight());
                                 cancelBlurView.setOverlayColor(backgroundColor == -1 ? blurFrontColor : backgroundColor);
                                 cancelBlurView.setTag("blurView");
                                 cancelBlurView.setRadiusPx(style.messageDialogBlurSettings().blurBackgroundRoundRadiusPx());
                                 boxCancel.addView(cancelBlurView, 0, cancelButtonLp);
                             }
+                            lifecycle.setCurrentState(Lifecycle.State.RESUMED);
                         }
                     });
                     
@@ -338,6 +378,7 @@ public class BottomDialog extends BaseDialog {
                     dialogImpl = null;
                     bottomDialogTouchEventInterceptor = null;
                     dialogLifecycleCallback = null;
+                    lifecycle.setCurrentState(Lifecycle.State.DESTROYED);
                     System.gc();
                 }
             });
@@ -396,124 +437,46 @@ public class BottomDialog extends BaseDialog {
                 }
             }
             
-            boxRoot.setOnBackPressedListener(new OnBackPressedListener() {
+            boxRoot.setOnBackPressedListener(new DialogXBaseRelativeLayout.PrivateBackPressedListener() {
                 @Override
                 public boolean onBackPressed() {
-                    if (onBackPressedListener != null && onBackPressedListener.onBackPressed()) {
-                        dismiss();
-                        return false;
+                    if (onBackPressedListener != null) {
+                        if (onBackPressedListener.onBackPressed(me)) {
+                            dismiss();
+                        }
+                    } else {
+                        if (isCancelable()) {
+                            dismiss();
+                        }
                     }
-                    if (isCancelable()) {
-                        dismiss();
-                    }
-                    return false;
+                    return true;
                 }
             });
             
-            boxRoot.post(new Runnable() {
+            boxBkg.post(new Runnable() {
                 @Override
                 public void run() {
-                    long enterAnimDurationTemp = 300;
-                    /**
-                     * 对于非支持滑动展开的对话框，直接使用从下往上的资源动画实现
-                     * 其他情况不适用，请参考 onContentViewLayoutChangeListener 的代码实现。
-                     */
-                    if (style.overrideBottomDialogRes() == null || !style.overrideBottomDialogRes().touchSlide()) {
-                        Animation enterAnim = AnimationUtils.loadAnimation(getContext(), R.anim.anim_dialogx_bottom_enter);
-                        enterAnimDurationTemp = enterAnim.getDuration();
-                        if (overrideEnterDuration >= 0) {
-                            enterAnimDurationTemp = overrideEnterDuration;
-                        }
-                        if (enterAnimDuration >= 0) {
-                            enterAnimDurationTemp = enterAnimDuration;
-                        }
-                        enterAnim.setDuration(enterAnimDurationTemp);
-                        enterAnim.setInterpolator(new DecelerateInterpolator(2f));
-                        
-                        bkg.setY(bkgEnterAimY);
-                        bkg.startAnimation(enterAnim);
-                    }
-                    
-                    ValueAnimator bkgAlpha = ValueAnimator.ofFloat(0f, 1f);
-                    bkgAlpha.setDuration(enterAnimDurationTemp);
-                    bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                    getDialogXAnimImpl().doShowAnim(BottomDialog.this, new ObjectRunnable<Float>() {
                         @Override
-                        public void onAnimationUpdate(ValueAnimator animation) {
-                            float value = (float) animation.getAnimatedValue();
+                        public void run(Float value) {
                             boxRoot.setBkgAlpha(value);
                             if (value == 1f) {
                                 bottomDialogTouchEventInterceptor = new BottomDialogTouchEventInterceptor(me, dialogImpl);
                             }
                         }
                     });
-                    bkgAlpha.start();
                 }
             });
+            
+            onDialogInit();
         }
-        
-        private boolean isEnterAnimFinished = false;
-        
-        private ViewTreeObserver.OnGlobalLayoutListener onContentViewLayoutChangeListener = new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                if (boxContent != null) {
-                    if (style.overrideBottomDialogRes() != null && style.overrideBottomDialogRes().touchSlide()) {
-                        //若内容布已经超出屏幕可用范围，且预设的对话框最大高度已知
-                        if (scrollView.isCanScroll() && bottomDialogMaxHeight != 0) {
-                            //先将内容布局放置到屏幕底部以外区域，然后执行上移动画
-                            if (!isEnterAnimFinished)
-                                bkg.setY(getRootFrameLayout().getMeasuredHeight());
-                            //执行上移动画
-                            if (bottomDialogMaxHeight <= 1) {
-                                //bottomDialogMaxHeight 值若为小于 1 的小数，视为比例
-                                bkgEnterAimY = boxBkg.getHeight() - bkg.getHeight() * bottomDialogMaxHeight;
-                            } else {
-                                bkgEnterAimY = boxBkg.getHeight() - bottomDialogMaxHeight;
-                            }
-                            long enterAnimDurationTemp = 300;
-                            if (overrideEnterDuration >= 0) {
-                                enterAnimDurationTemp = overrideEnterDuration;
-                            }
-                            if (enterAnimDuration >= 0) {
-                                enterAnimDurationTemp = enterAnimDuration;
-                            }
-                            ObjectAnimator keepBottomAnim = ObjectAnimator.ofFloat(bkg, "y", bkg.getY(), bkgEnterAimY);
-                            keepBottomAnim.setDuration(enterAnimDurationTemp);
-                            keepBottomAnim.setAutoCancel(true);
-                            keepBottomAnim.setInterpolator(new DecelerateInterpolator(2f));
-                            keepBottomAnim.start();
-                            boxContent.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                        } else {
-                            bkgEnterAimY = boxBkg.getHeight() - bkg.getHeight();
-                            if (!isEnterAnimFinished) bkg.setY(boxRoot.getHeight());
-                            bkg.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    ObjectAnimator enterAnim = ObjectAnimator.ofFloat(bkg, "y", bkg.getY(), bkgEnterAimY);
-                                    long enterAnimDurationTemp = 300;
-                                    if (overrideEnterDuration >= 0) {
-                                        enterAnimDurationTemp = overrideEnterDuration;
-                                    }
-                                    if (enterAnimDuration >= 0) {
-                                        enterAnimDurationTemp = enterAnimDuration;
-                                    }
-                                    enterAnim.setDuration(enterAnimDurationTemp);
-                                    enterAnim.setAutoCancel(true);
-                                    enterAnim.setInterpolator(new DecelerateInterpolator(2f));
-                                    enterAnim.start();
-                                }
-                            });
-                        }
-                    } else {
-                        bkgEnterAimY = boxBkg.getHeight() - bkg.getHeight();
-                    }
-                }
-                isEnterAnimFinished = true;
-            }
-        };
         
         @Override
         public void refreshView() {
+            if (boxRoot == null || getTopActivity() == null) {
+                return;
+            }
+            boxRoot.setRootPadding(screenPaddings[0], screenPaddings[1], screenPaddings[2], screenPaddings[3]);
             if (backgroundColor != -1) {
                 tintColor(bkg, backgroundColor);
                 if (blurView != null && cancelBlurView != null) {
@@ -535,15 +498,28 @@ public class BottomDialog extends BaseDialog {
             useTextInfo(btnSelectOther, otherTextInfo);
             useTextInfo(btnSelectPositive, okTextInfo);
             
-            if (isCancelable()) {
-                boxRoot.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        doDismiss(v);
-                    }
-                });
+            if (titleIcon != null) {
+                int size = (int) txtDialogTitle.getTextSize();
+                titleIcon.setBounds(0, 0, size, size);
+                txtDialogTitle.setCompoundDrawablePadding(dip2px(10));
+                txtDialogTitle.setCompoundDrawables(titleIcon, null, null, null);
+            }
+            
+            if (bkgInterceptTouch) {
+                if (isCancelable()) {
+                    boxRoot.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (onBackgroundMaskClickListener == null || !onBackgroundMaskClickListener.onClick(me, v)) {
+                                doDismiss(v);
+                            }
+                        }
+                    });
+                } else {
+                    boxRoot.setOnClickListener(null);
+                }
             } else {
-                boxRoot.setOnClickListener(null);
+                boxRoot.setClickable(false);
             }
             boxBkg.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -551,8 +527,25 @@ public class BottomDialog extends BaseDialog {
                     boxRoot.callOnClick();
                 }
             });
+            if (backgroundRadius > -1) {
+                GradientDrawable gradientDrawable = (GradientDrawable) bkg.getBackground();
+                if (gradientDrawable != null) gradientDrawable.setCornerRadii(new float[]{
+                        backgroundRadius, backgroundRadius, backgroundRadius, backgroundRadius, 0, 0, 0, 0
+                });
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                    bkg.setOutlineProvider(new ViewOutlineProvider() {
+                        @Override
+                        public void getOutline(View view, Outline outline) {
+                            outline.setRoundRect(0, 0, view.getWidth(), (int) (view.getHeight() + backgroundRadius), backgroundRadius);
+                        }
+                    });
+                    bkg.setClipToOutline(true);
+                }
+            }
             
-            if (maskColor != -1) boxRoot.setBackgroundColor(maskColor);
+            if (maskColor != -1) {
+                boxRoot.setBackground(new ColorDrawable(maskColor));
+            }
             
             if (onBindView != null && onBindView.getCustomView() != null) {
                 onBindView.bindParent(boxCustom, me);
@@ -561,6 +554,14 @@ public class BottomDialog extends BaseDialog {
                         ((BottomDialogScrollView) scrollView).setVerticalScrollBarEnabled(false);
                     }
                     scrollView = (ScrollController) onBindView.getCustomView();
+                } else {
+                    View scrollController = onBindView.getCustomView().findViewWithTag("ScrollController");
+                    if (scrollController instanceof ScrollController) {
+                        if (scrollView instanceof BottomDialogScrollView) {
+                            ((BottomDialogScrollView) scrollView).setVerticalScrollBarEnabled(false);
+                        }
+                        scrollView = (ScrollController) scrollController;
+                    }
                 }
             }
             
@@ -593,56 +594,51 @@ public class BottomDialog extends BaseDialog {
             showText(btnSelectPositive, okText);
             showText(btnCancel, cancelText);
             showText(btnSelectOther, otherText);
+            
+            onDialogRefreshUI();
         }
         
         @Override
         public void doDismiss(View v) {
             if (v != null) v.setEnabled(false);
-            if (getContext() == null) return;
-    
+            if (getTopActivity() == null) return;
+            
             if (!dismissAnimFlag) {
                 dismissAnimFlag = true;
-                if (boxContent != null) {
-                    boxContent.getViewTreeObserver().removeOnGlobalLayoutListener(onContentViewLayoutChangeListener);
-                }
-    
-                long exitAnimDurationTemp = 300;
-                if (overrideExitDuration >= 0) {
-                    exitAnimDurationTemp = overrideExitDuration;
-                }
-                if (exitAnimDuration >= 0) {
-                    exitAnimDurationTemp = exitAnimDuration;
-                }
-    
-                ObjectAnimator exitAnim = ObjectAnimator.ofFloat(bkg, "y", bkg.getY(), boxBkg.getHeight());
-                exitAnim.setDuration(exitAnimDurationTemp);
-                exitAnim.start();
-    
-                ValueAnimator bkgAlpha = ValueAnimator.ofFloat(1f, 0f);
-                bkgAlpha.setDuration(exitAnimDurationTemp);
-                bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                
+                getDialogXAnimImpl().doExitAnim(BottomDialog.this, new ObjectRunnable<Float>() {
                     @Override
-                    public void onAnimationUpdate(ValueAnimator animation) {
+                    public void run(Float animatedValue) {
                         if (boxRoot != null) {
-                            float value = (float) animation.getAnimatedValue();
-                            boxRoot.setBkgAlpha(value);
-                            if (value == 0) boxRoot.setVisibility(View.GONE);
+                            boxRoot.setBkgAlpha(animatedValue);
+                        }
+                        if (animatedValue == 0) {
+                            if (boxRoot != null) {
+                                boxRoot.setVisibility(View.GONE);
+                            }
+                            dismiss(dialogView);
                         }
                     }
                 });
-                bkgAlpha.start();
-    
-                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                
+                runOnMainDelay(new Runnable() {
                     @Override
                     public void run() {
-                        dismiss(dialogView);
                     }
                 }, exitAnimDurationTemp);
             }
         }
         
+        long exitAnimDurationTemp = 300;
+        
         public void preDismiss() {
             if (isCancelable()) {
+                if (getDialogLifecycleCallback() instanceof BottomDialogSlideEventLifecycleCallback) {
+                    if (!((BottomDialogSlideEventLifecycleCallback) getDialogLifecycleCallback()).onSlideClose(me)) {
+                        doDismiss(boxRoot);
+                    }
+                    return;
+                }
                 doDismiss(boxRoot);
             } else {
                 long exitAnimDurationTemp = 300;
@@ -652,14 +648,89 @@ public class BottomDialog extends BaseDialog {
                 if (exitAnimDuration >= 0) {
                     exitAnimDurationTemp = exitAnimDuration;
                 }
-                ObjectAnimator exitAnim = ObjectAnimator.ofFloat(bkg, "y", bkg.getY(), bkgEnterAimY);
+                ObjectAnimator exitAnim = ObjectAnimator.ofFloat(boxBkg, "y", boxBkg.getY(), boxRoot.getUnsafePlace().top);
                 exitAnim.setDuration(exitAnimDurationTemp);
                 exitAnim.start();
             }
         }
-    }
-    
-    protected void onDialogInit(DialogImpl dialog) {
+        
+        protected DialogXAnimInterface<BottomDialog> getDialogXAnimImpl() {
+            if (dialogXAnimImpl == null) {
+                dialogXAnimImpl = new DialogXAnimInterface<BottomDialog>() {
+                    @Override
+                    public void doShowAnim(BottomDialog dialog, ObjectRunnable<Float> animProgress) {
+                        long enterAnimDurationTemp = 300;
+                        
+                        float customDialogTop = 0;
+                        if (dialog.isAllowInterceptTouch()) {
+                            if (bottomDialogMaxHeight > 0 && bottomDialogMaxHeight <= 1) {
+                                customDialogTop = boxBkg.getHeight() - bottomDialogMaxHeight * boxBkg.getHeight();
+                            } else if (bottomDialogMaxHeight > 1) {
+                                customDialogTop = boxBkg.getHeight() - bottomDialogMaxHeight;
+                            }
+                        } else {
+                            if (bottomDialogMaxHeight > 0 && bottomDialogMaxHeight <= 1) {
+                                customDialogTop = boxBkg.getHeight() - bottomDialogMaxHeight * boxBkg.getHeight();
+                            } else if (bottomDialogMaxHeight > 1) {
+                                customDialogTop = boxBkg.getHeight() - bottomDialogMaxHeight;
+                            }
+                            boxBkg.setPadding(0, 0, 0, (int) customDialogTop);
+                        }
+                        
+                        //上移动画
+                        ObjectAnimator enterAnim = ObjectAnimator.ofFloat(boxBkg, "y", boxBkg.getY(),
+                                bkgEnterAimY = boxRoot.getUnsafePlace().top + customDialogTop
+                        );
+                        if (overrideEnterDuration >= 0) {
+                            enterAnimDurationTemp = overrideEnterDuration;
+                        }
+                        if (enterAnimDuration >= 0) {
+                            enterAnimDurationTemp = enterAnimDuration;
+                        }
+                        enterAnim.setDuration(enterAnimDurationTemp);
+                        enterAnim.setAutoCancel(true);
+                        enterAnim.setInterpolator(new DecelerateInterpolator(2f));
+                        enterAnim.start();
+                        
+                        //遮罩层动画
+                        ValueAnimator bkgAlpha = ValueAnimator.ofFloat(0f, 1f);
+                        bkgAlpha.setDuration(enterAnimDurationTemp);
+                        bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                            @Override
+                            public void onAnimationUpdate(ValueAnimator animation) {
+                                animProgress.run((Float) animation.getAnimatedValue());
+                            }
+                        });
+                        bkgAlpha.start();
+                    }
+                    
+                    @Override
+                    public void doExitAnim(BottomDialog dialog, ObjectRunnable<Float> animProgress) {
+                        if (overrideExitDuration >= 0) {
+                            exitAnimDurationTemp = overrideExitDuration;
+                        }
+                        if (exitAnimDuration >= 0) {
+                            exitAnimDurationTemp = exitAnimDuration;
+                        }
+                        
+                        ObjectAnimator exitAnim = ObjectAnimator.ofFloat(boxBkg, "y", boxBkg.getY(), boxBkg.getHeight());
+                        exitAnim.setDuration(exitAnimDurationTemp);
+                        exitAnim.start();
+                        
+                        ValueAnimator bkgAlpha = ValueAnimator.ofFloat(1f, 0f);
+                        bkgAlpha.setDuration(exitAnimDurationTemp);
+                        bkgAlpha.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                            @Override
+                            public void onAnimationUpdate(ValueAnimator animation) {
+                                animProgress.run((Float) animation.getAnimatedValue());
+                            }
+                        });
+                        bkgAlpha.start();
+                    }
+                };
+            }
+            return dialogXAnimImpl;
+        }
     }
     
     public void refreshUI() {
@@ -673,8 +744,13 @@ public class BottomDialog extends BaseDialog {
     }
     
     public void dismiss() {
-        if (dialogImpl == null) return;
-        dialogImpl.doDismiss(null);
+        runOnMain(new Runnable() {
+            @Override
+            public void run() {
+                if (dialogImpl == null) return;
+                dialogImpl.doDismiss(null);
+            }
+        });
     }
     
     public DialogLifecycleCallback<BottomDialog> getDialogLifecycleCallback() {
@@ -688,11 +764,11 @@ public class BottomDialog extends BaseDialog {
         return this;
     }
     
-    public OnBackPressedListener getOnBackPressedListener() {
-        return onBackPressedListener;
+    public OnBackPressedListener<BottomDialog> getOnBackPressedListener() {
+        return (OnBackPressedListener<BottomDialog>) onBackPressedListener;
     }
     
-    public BottomDialog setOnBackPressedListener(OnBackPressedListener onBackPressedListener) {
+    public BottomDialog setOnBackPressedListener(OnBackPressedListener<BottomDialog> onBackPressedListener) {
         this.onBackPressedListener = onBackPressedListener;
         refreshUI();
         return this;
@@ -999,9 +1075,33 @@ public class BottomDialog extends BaseDialog {
         show(dialogView);
     }
     
+    protected boolean isHide;
+    
     public void hide() {
+        isHide = true;
+        hideWithExitAnim = false;
         if (getDialogView() != null) {
             getDialogView().setVisibility(View.GONE);
+        }
+    }
+    
+    protected boolean hideWithExitAnim;
+    
+    public void hideWithExitAnim() {
+        hideWithExitAnim = true;
+        isHide = true;
+        if (getDialogImpl() != null) {
+            getDialogImpl().getDialogXAnimImpl().doExitAnim(me, new ObjectRunnable<Float>() {
+                @Override
+                public void run(Float value) {
+                    if (getDialogImpl().boxRoot != null) {
+                        getDialogImpl().boxRoot.setBkgAlpha(value);
+                    }
+                    if (value == 0 && getDialogView() != null) {
+                        getDialogView().setVisibility(View.GONE);
+                    }
+                }
+            });
         }
     }
     
@@ -1025,8 +1125,97 @@ public class BottomDialog extends BaseDialog {
         return this;
     }
     
+    public BottomDialog setMaxHeight(int maxHeight) {
+        this.maxHeight = maxHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public BottomDialog setMinHeight(int minHeight) {
+        this.minHeight = minHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public BottomDialog setMinWidth(int minWidth) {
+        this.minWidth = minWidth;
+        refreshUI();
+        return this;
+    }
+    
     public BottomDialog setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
         this.dialogImplMode = dialogImplMode;
+        return this;
+    }
+    
+    public boolean isBkgInterceptTouch() {
+        return bkgInterceptTouch;
+    }
+    
+    public BottomDialog setBkgInterceptTouch(boolean bkgInterceptTouch) {
+        this.bkgInterceptTouch = bkgInterceptTouch;
+        return this;
+    }
+    
+    public OnBackgroundMaskClickListener<BottomDialog> getOnBackgroundMaskClickListener() {
+        return (OnBackgroundMaskClickListener<BottomDialog>) onBackgroundMaskClickListener;
+    }
+    
+    public BottomDialog setOnBackgroundMaskClickListener(OnBackgroundMaskClickListener<BottomDialog> onBackgroundMaskClickListener) {
+        this.onBackgroundMaskClickListener = onBackgroundMaskClickListener;
+        return this;
+    }
+    
+    public BottomDialog setRadius(float radiusPx) {
+        backgroundRadius = radiusPx;
+        refreshUI();
+        return this;
+    }
+    
+    public float getRadius() {
+        return backgroundRadius;
+    }
+    
+    public Drawable getTitleIcon() {
+        return titleIcon;
+    }
+    
+    public BottomDialog setTitleIcon(Bitmap titleIcon) {
+        this.titleIcon = new BitmapDrawable(getResources(), titleIcon);
+        refreshUI();
+        return this;
+    }
+    
+    public BottomDialog setTitleIcon(int titleIconResId) {
+        this.titleIcon = getResources().getDrawable(titleIconResId);
+        refreshUI();
+        return this;
+    }
+    
+    public BottomDialog setTitleIcon(Drawable titleIcon) {
+        this.titleIcon = titleIcon;
+        refreshUI();
+        return this;
+    }
+    
+    public DialogXAnimInterface<BottomDialog> getDialogXAnimImpl() {
+        return dialogXAnimImpl;
+    }
+    
+    public BottomDialog setDialogXAnimImpl(DialogXAnimInterface<BottomDialog> dialogXAnimImpl) {
+        this.dialogXAnimImpl = dialogXAnimImpl;
+        return this;
+    }
+    
+    public BottomDialog setRootPadding(int padding) {
+        this.screenPaddings = new int[]{padding, padding, padding, padding};
+        refreshUI();
+        return this;
+    }
+    
+    public BottomDialog setRootPadding(int paddingLeft, int paddingTop, int paddingRight, int paddingBottom) {
+        this.screenPaddings = new int[]{paddingLeft, paddingTop, paddingRight, paddingBottom};
+        refreshUI();
         return this;
     }
 }

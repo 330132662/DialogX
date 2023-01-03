@@ -2,18 +2,12 @@ package com.kongzue.dialogx.util.views;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.os.Build;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.widget.ListAdapter;
 import android.widget.ListView;
-import android.widget.ScrollView;
 
-import androidx.annotation.RequiresApi;
+import androidx.appcompat.view.ContextThemeWrapper;
 
 import com.kongzue.dialogx.dialogs.BottomDialog;
 import com.kongzue.dialogx.interfaces.BottomMenuListViewTouchEvent;
@@ -45,6 +39,12 @@ public class BottomDialogListView extends ListView {
     
     public BottomDialogListView(BottomDialog.DialogImpl dialog, Context context) {
         super(context);
+        dialogImpl = dialog;
+        setVerticalScrollBarEnabled(false);
+    }
+    
+    public BottomDialogListView(BottomDialog.DialogImpl dialog, Context context,int theme) {
+        super(new ContextThemeWrapper(context,theme));
         dialogImpl = dialog;
         setVerticalScrollBarEnabled(false);
     }

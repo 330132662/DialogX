@@ -16,11 +16,9 @@ import com.kongzue.dialogxmaterialyou.R;
  * @mail: myzcxhh@live.cn
  * @createTime: 2020/9/26 13:09
  */
-public class MaterialYouStyle implements DialogXStyle {
+public class MaterialYouStyle extends DialogXStyle {
     
     public static MaterialYouStyle style() {
-        DialogX.titleTextInfo = new TextInfo().setBold(false);
-        DialogX.buttonTextInfo = new TextInfo().setBold(false);
         return new MaterialYouStyle();
     }
     
@@ -223,7 +221,101 @@ public class MaterialYouStyle implements DialogXStyle {
             public int exitAnimResId(boolean light) {
                 return R.anim.anim_dialogx_default_exit;
             }
+    
+            @Override
+            public boolean tintIcon() {
+                return true;
+            }
         };
     }
     
+    @Override
+    public PopMenuSettings popMenuSettings() {
+        return new PopMenuSettings() {
+            @Override
+            public int layout(boolean light) {
+                return light?R.layout.layout_dialogx_popmenu_material_you:R.layout.layout_dialogx_popmenu_material_you_dark;
+            }
+    
+            @Override
+            public BlurBackgroundSetting blurBackgroundSettings() {
+                return null;
+            }
+    
+            @Override
+            public int backgroundMaskColorRes() {
+                return 0;
+            }
+    
+            @Override
+            public int overrideMenuDividerDrawableRes(boolean b) {
+                return 0;
+            }
+    
+            @Override
+            public int overrideMenuDividerHeight(boolean b) {
+                return 0;
+            }
+    
+            @Override
+            public int overrideMenuTextColor(boolean b) {
+                return 0;
+            }
+    
+            @Override
+            public int overrideMenuItemLayoutRes(boolean b) {
+                return 0;
+            }
+    
+            @Override
+            public int overrideMenuItemBackgroundRes(boolean b, int i, int i1, boolean b1) {
+                return 0;
+            }
+    
+            @Override
+            public int overrideSelectionMenuBackgroundColor(boolean b) {
+                return 0;
+            }
+    
+            @Override
+            public boolean selectionImageTint(boolean b) {
+                return false;
+            }
+    
+            @Override
+            public int paddingVertical() {
+                return 0;
+            }
+        };
+    }
+    
+    @Override
+    public PopNotificationSettings popNotificationSettings() {
+        return new PopNotificationSettings() {
+            @Override
+            public int layout(boolean light) {
+                return light ? R.layout.layout_dialogx_popnotification_material_you : R.layout.layout_dialogx_popnotification_material_you_dark;
+            }
+    
+            @Override
+            public PopNotificationSettings.ALIGN align() {
+                return ALIGN.TOP;
+            }
+    
+            @Override
+            public int enterAnimResId(boolean light) {
+                return R.anim.anim_dialogx_notification_enter;
+            }
+    
+            @Override
+            public int exitAnimResId(boolean light) {
+                return R.anim.anim_dialogx_notification_exit;
+            }
+    
+            @Override
+            public boolean tintIcon() {
+                return false;
+            }
+        };
+    }
 }

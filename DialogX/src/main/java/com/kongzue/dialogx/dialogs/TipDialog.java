@@ -3,9 +3,9 @@ package com.kongzue.dialogx.dialogs;
 import android.app.Activity;
 
 import com.kongzue.dialogx.DialogX;
-import com.kongzue.dialogx.interfaces.DialogLifecycleCallback;
-
-import java.lang.ref.WeakReference;
+import com.kongzue.dialogx.interfaces.DialogXAnimInterface;
+import com.kongzue.dialogx.interfaces.OnBackPressedListener;
+import com.kongzue.dialogx.interfaces.OnBackgroundMaskClickListener;
 
 /**
  * @author: Kongzue
@@ -56,7 +56,7 @@ public class TipDialog extends WaitDialog {
         if (noInstance) instanceBuild();
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(message, TYPE.WARNING);
-        showWithInstance(noInstance, activity);
+        if (noInstance) showWithInstance(noInstance, activity);
         return instance;
     }
     
@@ -73,12 +73,13 @@ public class TipDialog extends WaitDialog {
         if (noInstance) instanceBuild();
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(messageResId, tip);
-        showWithInstance(noInstance, activity);
+        if (noInstance) showWithInstance(noInstance, activity);
         return instance;
     }
     
     public static WaitDialog show(CharSequence message, TYPE tip) {
         boolean noInstance = noInstance();
+        log("noInstance:"+noInstance);
         if (noInstance) instanceBuild();
         me().setTip(message, tip);
         showWithInstance(noInstance);
@@ -90,7 +91,7 @@ public class TipDialog extends WaitDialog {
         if (noInstance) instanceBuild();
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(message, tip);
-        showWithInstance(noInstance, activity);
+        if (noInstance) showWithInstance(noInstance, activity);
         return instance;
     }
     
@@ -109,7 +110,7 @@ public class TipDialog extends WaitDialog {
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(messageResId, tip);
         instance.setTipShowDuration(duration);
-        showWithInstance(noInstance, activity);
+        if (noInstance) showWithInstance(noInstance, activity);
         return instance;
     }
     
@@ -128,7 +129,7 @@ public class TipDialog extends WaitDialog {
         WaitDialog instance = getInstanceNotNull(activity);
         instance.setTip(message, tip);
         instance.setTipShowDuration(duration);
-        showWithInstance(noInstance, activity);
+        if (noInstance) showWithInstance(noInstance, activity);
         return instance;
     }
     
@@ -161,8 +162,77 @@ public class TipDialog extends WaitDialog {
         return this;
     }
     
+    public TipDialog setMaxHeight(int maxHeight) {
+        this.maxHeight = maxHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public TipDialog setMinHeight(int minHeight) {
+        this.minHeight = minHeight;
+        refreshUI();
+        return this;
+    }
+    
+    public TipDialog setMinWidth(int minWidth) {
+        this.minWidth = minWidth;
+        refreshUI();
+        return this;
+    }
+    
     public TipDialog setDialogImplMode(DialogX.IMPL_MODE dialogImplMode) {
         this.dialogImplMode = dialogImplMode;
+        return this;
+    }
+    
+    public boolean isBkgInterceptTouch() {
+        return bkgInterceptTouch;
+    }
+    
+    public TipDialog setBkgInterceptTouch(boolean bkgInterceptTouch) {
+        this.bkgInterceptTouch = bkgInterceptTouch;
+        return this;
+    }
+    
+    public OnBackgroundMaskClickListener<WaitDialog> getOnBackgroundMaskClickListener() {
+        return onBackgroundMaskClickListener;
+    }
+    
+    public TipDialog setOnBackgroundMaskClickListener(OnBackgroundMaskClickListener<WaitDialog> onBackgroundMaskClickListener) {
+        this.onBackgroundMaskClickListener = onBackgroundMaskClickListener;
+        return this;
+    }
+    
+    public TipDialog setRadius(float radiusPx) {
+        backgroundRadius = radiusPx;
+        refreshUI();
+        return this;
+    }
+    
+    public float getRadius() {
+        return backgroundRadius;
+    }
+    
+    public TipDialog setDialogXAnimImpl(DialogXAnimInterface<WaitDialog> dialogXAnimImpl) {
+        this.dialogXAnimImpl = dialogXAnimImpl;
+        return this;
+    }
+    
+    public TipDialog setOnBackPressedListener(OnBackPressedListener<WaitDialog> onBackPressedListener) {
+        this.onBackPressedListener = onBackPressedListener;
+        refreshUI();
+        return this;
+    }
+    
+    public TipDialog setRootPadding(int padding) {
+        this.screenPaddings = new int[]{padding, padding, padding, padding};
+        refreshUI();
+        return this;
+    }
+    
+    public TipDialog setRootPadding(int paddingLeft, int paddingTop, int paddingRight, int paddingBottom) {
+        this.screenPaddings = new int[]{paddingLeft, paddingTop, paddingRight, paddingBottom};
+        refreshUI();
         return this;
     }
 }

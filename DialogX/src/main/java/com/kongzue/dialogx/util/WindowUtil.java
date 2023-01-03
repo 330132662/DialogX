@@ -2,9 +2,10 @@ package com.kongzue.dialogx.util;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.os.Build;
-import android.util.Log;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -13,9 +14,10 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-import com.kongzue.dialogx.R;
+import com.kongzue.dialogx.DialogX;
 import com.kongzue.dialogx.dialogs.PopTip;
 import com.kongzue.dialogx.interfaces.BaseDialog;
+import com.kongzue.dialogx.interfaces.NoTouchInterface;
 
 import static android.view.WindowManager.LayoutParams.*;
 
@@ -28,7 +30,7 @@ import static android.view.WindowManager.LayoutParams.*;
  */
 public class WindowUtil {
     
-    public static void show(final Activity activity, final View dialogView, final boolean touchEnable) {
+    public static void show(Activity activity, View dialogView, boolean touchEnable) {
         try {
             if (activity.getWindow().getDecorView().isAttachedToWindow()) {
                 showNow(activity, dialogView, touchEnable);
@@ -47,30 +49,49 @@ public class WindowUtil {
         }
     }
     
-    private static void showNow(final Activity activity, View dialogView, boolean touchEnable) {
+    private static void showNow(Activity activity, View dialogView, boolean touchEnable) {
+        if (DialogX.globalHoverWindow && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(activity)) {
+            Toast.makeText(activity, "使用 DialogX.globalHoverWindow 必须开启悬浮窗权限", Toast.LENGTH_LONG).show();
+            Intent intent = new Intent();
+            intent.setAction(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+            activity.startActivity(intent);
+            return;
+        }
         FrameLayout rootLayout = new FrameLayout(activity);
-        rootLayout.addView(dialogView,new FrameLayout.LayoutParams(MATCH_PARENT,MATCH_PARENT));
+        if (dialogView.getParent() != null) {
+            ((ViewGroup) dialogView.getParent()).removeView(dialogView);
+        }
+        rootLayout.addView(dialogView, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
         WindowManager manager = (WindowManager) activity.getSystemService(Context.WINDOW_SERVICE);
         WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
-        
         layoutParams.gravity = Gravity.CENTER_VERTICAL;
         layoutParams.format = PixelFormat.TRANSPARENT;
-        layoutParams.type = TYPE_APPLICATION_ATTACHED_DIALOG;
+        if (DialogX.globalHoverWindow) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                layoutParams.type = TYPE_APPLICATION_OVERLAY;
+            } else {
+                layoutParams.type = TYPE_PHONE;
+            }
+        } else {
+            layoutParams.type = TYPE_APPLICATION_ATTACHED_DIALOG;
+        }
         layoutParams.flags = FLAG_FULLSCREEN |
                 FLAG_TRANSLUCENT_STATUS |
                 FLAG_TRANSLUCENT_NAVIGATION |
                 FLAG_LAYOUT_IN_SCREEN
         ;
+        layoutParams.softInputMode = SOFT_INPUT_ADJUST_RESIZE;
         if (!touchEnable) {
             dialogView.setOnTouchListener(new View.OnTouchListener() {
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
-                    for (BaseDialog baseDialog : BaseDialog.getRunningDialogList()) {
-                        if (!(baseDialog instanceof PopTip) && !baseDialog.isCancelable() && baseDialog.getActivity() == activity) {
+                    for (int i = BaseDialog.getRunningDialogList().size() - 1; i >= 0; i--) {
+                        BaseDialog baseDialog = BaseDialog.getRunningDialogList().get(i);
+                        if (!(baseDialog instanceof NoTouchInterface) && baseDialog.getOwnActivity() == activity) {
                             if (baseDialog.getDialogView() == null) {
                                 return false;
                             }
-                            return baseDialog.getDialogView().dispatchTouchEvent(event);
+                            return baseDialog.getOwnActivity().dispatchTouchEvent(event);
                         }
                     }
                     return activity.dispatchTouchEvent(event);
@@ -85,8 +106,8 @@ public class WindowUtil {
     
     public static void dismiss(View dialogView) {
         BaseDialog baseDialog = (BaseDialog) dialogView.getTag();
-        if (baseDialog != null && baseDialog.getActivity() != null) {
-            WindowManager manager = (WindowManager) baseDialog.getActivity().getSystemService(Context.WINDOW_SERVICE);
+        if (baseDialog != null && baseDialog.getOwnActivity() != null) {
+            WindowManager manager = (WindowManager) baseDialog.getOwnActivity().getSystemService(Context.WINDOW_SERVICE);
             manager.removeViewImmediate((View) dialogView.getParent());
         }
     }
