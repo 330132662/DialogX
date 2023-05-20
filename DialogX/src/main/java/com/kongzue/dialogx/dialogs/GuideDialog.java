@@ -30,6 +30,8 @@ import com.kongzue.dialogx.interfaces.OnBindView;
 import com.kongzue.dialogx.interfaces.OnDialogButtonClickListener;
 import com.kongzue.dialogx.util.views.DialogXBaseRelativeLayout;
 
+import java.util.Arrays;
+
 /**
  * @author: Kongzue
  * @github: https://github.com/kongzue/
@@ -536,7 +538,7 @@ public class GuideDialog extends CustomDialog {
             getDialogImpl().boxCustom.setOnClickListener(null);
             getDialogImpl().boxCustom.setClickable(false);
             
-            ImageView imageView = new ImageView(getContext());
+            ImageView imageView = new ImageView(getOwnActivity());
             imageView.setImageDrawable(tipImage);
             imageView.setAdjustViewBounds(true);
             imageView.setLayoutParams(new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -549,7 +551,7 @@ public class GuideDialog extends CustomDialog {
             onBindView.bindParent(getDialogImpl().boxCustom, me);
         }
         if (getOnStageLightPathClickListener() != null && baseView != null) {
-            stageLightPathStub = new View(getContext());
+            stageLightPathStub = new View(getOwnActivity());
             stageLightPathStub.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -566,9 +568,13 @@ public class GuideDialog extends CustomDialog {
         }
     }
     
+    int[] baseViewLocCache;
+    
     @Override
     protected void onGetBaseViewLoc(int[] baseViewLoc) {
-        super.onGetBaseViewLoc(baseViewLoc);
+        if (Arrays.equals(baseViewLoc, baseViewLocCache)) {
+            return;
+        }
         if (getDialogImpl() == null) {
             return;
         }
@@ -623,8 +629,10 @@ public class GuideDialog extends CustomDialog {
         }
         stageLightPaint.setXfermode(null);
         canvas.drawColor(maskColor == -1 ? getColor(R.color.black50) : maskColor, PorterDuff.Mode.SRC_OUT);
+        
         BitmapDrawable bkgDrawable = new BitmapDrawable(getResources(), bkg);
         getDialogImpl().boxRoot.setBackground(bkgDrawable);
+        baseViewLocCache = Arrays.copyOf(baseViewLoc, 4);
     }
     
     Paint stageLightPaint;
